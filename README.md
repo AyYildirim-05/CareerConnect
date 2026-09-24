@@ -12,45 +12,45 @@
 
 ---
 
-## 📖 Table of Contents
+## Table of Contents
 - [CareerConnect](#careerconnect)
 - [CareerConnect — Job Search \& Application Tracking Platform](#careerconnect--job-search--application-tracking-platform)
-  - [📖 Table of Contents](#-table-of-contents)
-  - [🎯 Project Overview](#-project-overview)
-  - [🔍 Identified Problem \& Proposed Solution](#-identified-problem--proposed-solution)
+  - [Table of Contents](#table-of-contents)
+  - [Project Overview](#project-overview)
+  - [Identified Problem \& Proposed Solution](#identified-problem--proposed-solution)
     - [The Problem](#the-problem)
     - [The Proposed Solution](#the-proposed-solution)
-  - [🛠 System Architecture \& Tech Stack](#-system-architecture--tech-stack)
-  - [✨ Key Features](#-key-features)
+  - [System Architecture \& Tech Stack](#system-architecture--tech-stack)
+  - [Key Features](#key-features)
     - [Core Features](#core-features)
     - [Generative AI Feature](#generative-ai-feature)
     - [Original Team-Generated Features](#original-team-generated-features)
-  - [💻 Development Setup \& Installation](#-development-setup--installation)
+  - [Development Setup \& Installation](#development-setup--installation)
     - [Prerequisites](#prerequisites)
     - [1. Clone the Repository](#1-clone-the-repository)
     - [2. Environment Variables Configuration](#2-environment-variables-configuration)
     - [3. Backend Setup](#3-backend-setup)
     - [4. Frontend Setup](#4-frontend-setup)
-  - [🔄 Team Process \& Agile Governance](#-team-process--agile-governance)
+  - [Team Process \& Agile Governance](#team-process--agile-governance)
     - [Branching \& Pull Request Strategy](#branching--pull-request-strategy)
     - [Definition of Ready (DoR)](#definition-of-ready-dor)
     - [Definition of Done (DoD)](#definition-of-done-dod)
     - [Code Review Guidelines](#code-review-guidelines)
-  - [🚀 Sprint 1 Scope \& Demo](#-sprint-1-scope--demo)
+  - [Sprint 1 Scope \& Demo](#sprint-1-scope--demo)
     - [Deliverables](#deliverables)
     - [Sprint 1 Code Demonstration (Two Basic Features)](#sprint-1-code-demonstration-two-basic-features)
-  - [📂 Repository Directory Structure](#-repository-directory-structure)
-  - [👥 Team Members \& Contributions](#-team-members--contributions)
+  - [Repository Directory Structure](#repository-directory-structure)
+  - [Team Members \& Contributions](#team-members--contributions)
 
 ---
 
-## 🎯 Project Overview
+## Project Overview
 
 **CareerConnect** is a centralized, full-stack web application designed to simplify and optimize the employment lifecycle for both job candidates and talent acquisition teams. The platform equips candidates with tools to store resumes, monitor recruitment funnels (Applied $\to$ Interview $\to$ Offer $\to$ Rejection), and receive intelligent resume/job-matching insights. Simultaneously, recruiters are provided with intuitive dashboards to publish openings, screen candidate pools, and streamline communication.
 
 ---
 
-## 🔍 Identified Problem & Proposed Solution
+## Identified Problem & Proposed Solution
 
 ### The Problem
 * **Fragmented Job Tracking**: Job seekers often apply across multiple distinct platforms (LinkedIn, Indeed, company portals, email threads), leading to disorganized application records, missed deadlines, and lost follow-up opportunities.
@@ -64,7 +64,7 @@
 
 ---
 
-## 🛠 System Architecture & Tech Stack
+## System Architecture & Tech Stack
 
 *(Update this section to match your team's agreed tech stack)*
 
@@ -79,7 +79,7 @@
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 ### Core Features
 1. **Role-Based Authentication & Profiles**: Secure sign-up/login for Job Seekers and Recruiters, complete with profile customizers.
@@ -100,7 +100,7 @@
 
 ---
 
-## 💻 Development Setup & Installation
+## Development Setup & Installation
 
 ### Prerequisites
 * **Node.js**: `v18.x` or higher
@@ -140,7 +140,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to test the 
 
 ---
 
-## 🔄 Team Process & Agile Governance
+## Team Process & Agile Governance
 
 ### Branching & Pull Request Strategy
 * **Protected Branches**:
@@ -179,7 +179,7 @@ A task or user story is considered Done when:
 
 ---
 
-## 🚀 Sprint 1 Scope & Demo
+## Sprint 1 Scope & Demo
 
 ### Deliverables
 * **Repository Architecture**: Established directory tree, GitHub Projects Kanban board, labels, and issue tracking.
@@ -197,7 +197,7 @@ A task or user story is considered Done when:
 
 ---
 
-## 📂 Repository Directory Structure
+## Repository Directory Structure
 
 ```text
 CareerConnect/
@@ -229,7 +229,7 @@ CareerConnect/
 
 ---
 
-## 👥 Team Members & Contributions
+## Team Members & Contributions
 
 | Member Name | Student ID | GitHub Handle | Primary Role / Responsibility | Sprint 1 Contributions |
 |---|---|---|---|---|
