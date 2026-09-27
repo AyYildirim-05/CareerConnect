@@ -1,0 +1,90 @@
+# ==============================================================================
+# Dependencies (Large Directories)
+# ==============================================================================
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+
+# ==============================================================================
+# Environment Variables & Secrets
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.env
+Backend/.env
+Frontend/.env
+
+# Sensitive credentials & service account keys
+*-service-account*.json
+*service-account*.json
+firebase-service-account.json
+Backend/config/firebase-service-account.json
+credentials.json
+*.pem
+*.key
+
+# ==============================================================================
+# Production Build Outputs & Bundles
+# ==============================================================================
+build/
+dist/
+out/
+.next/
+.nuxt/
+
+# ==============================================================================
+# Logs & Runtime Diagnostics
+# ==============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==============================================================================
+# Cache, Test Coverage & Temporary Files
+# ==============================================================================
+.cache/
+.parcel-cache/
+.eslintcache
+coverage/
+.nyc_output/
+*.sqlite
+Backend/*.sqlite
+tests/*.sqlite
+tmp/
+temp/
+*.tmp
+
+# ==============================================================================
+# OS & Editor Files
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+
+# ==============================================================================
+# AI Log Folder (excluded for now; keeps AI_Usage_Log.md tracked)
+# ==============================================================================
+AI_Log/
+**/AI_Log/
+Documentation/AI_Log/
+

@@ -1,0 +1,23 @@
+{
+  "name": "careerconnect-root",
+  "version": "1.0.0",
+  "description": "CareerConnect - Job Search & Application Tracking Platform",
+  "scripts": {
+    "install:all": "npm install && cd Backend && npm install && cd ../Frontend && npm install",
+    "start": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run start:backend\" \"npm run start:frontend\"",
+    "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd Backend && npm run dev",
+    "start:frontend": "cd Frontend && npm start"
+  },
+  "keywords": [
+    "careerconnect",
+    "soen341",
+    "job-search",
+    "recruitment"
+  ],
+  "author": "CareerConnect Team",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
