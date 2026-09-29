@@ -238,7 +238,7 @@ CareerConnect/
 | Member Name | Student ID | GitHub Handle | Primary Role / Responsibility | Sprint 1 Contributions |
 |---|---|---|---|---|
 | *Ahmet Yusuf Yildirim* | *40340020* | `@AyYildirim-05` | Scrum Master | Repository setup, board initialization, registration UI/API, finalizing user stories |
-| *Full Name 2* | *Concordia ID* | `@github2` | Backend Lead | Database schemas, JWT authentication, Express routing |
+| *Le Viet Cuong* | *40151142* | `@cuonglv1108` | Backend Lead | Database schemas, JWT authentication, Express routing |
 | *Full Name 3* | *Concordia ID* | `@github3` | Frontend Lead | Profile dashboard view, editable experience UI components |
 | *Full Name 4* | *Concordia ID* | `@github4` | Backend / AI Specialist | PDF parsing ingestion pipeline, AI log documentation |
 | *Full Name 5* | *Concordia ID* | `@github5` | QA / DevOps / Product Owner | README documentation, DoD/DoR definitions, CI pipeline |
