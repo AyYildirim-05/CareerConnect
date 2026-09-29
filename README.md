@@ -241,4 +241,4 @@ CareerConnect/
 | *Darwinsh Saint-Jean* | *40341644* | `@Darivaci` | - | - |
 | *Shaarav Dhingra* | *40297531* | `@shaaravd` | - | - |
 | *Nassim Saidi4* | *40345885* | `@nassimsaidipro` | - | - |
-| *Full Name 5* | *Concordia ID* | `@github5` | QA / DevOps / Product Owner | README documentation, DoD/DoR definitions, CI pipeline |
+| *Andy Su* | *40226463* | `@su_andy` | QA / DevOps / Product Owner | README documentation, DoD/DoR definitions, CI pipeline |
