@@ -242,3 +242,7 @@ CareerConnect/
 | *Full Name 3* | *Concordia ID* | `@github3` | Frontend Lead | Profile dashboard view, editable experience UI components |
 | *Full Name 4* | *Concordia ID* | `@github4` | Backend / AI Specialist | PDF parsing ingestion pipeline, AI log documentation |
 | *Full Name 5* | *Concordia ID* | `@github5` | QA / DevOps / Product Owner | README documentation, DoD/DoR definitions, CI pipeline |
+| *Darwinsh Saint-Jean* | *40341644* | `@Darivaci` | - | - |
+| *Shaarav Dhingra* | *40297531* | `@shaaravd` | - | - |
+| *Nassim Saidi4* | *40345885* | `@nassimsaidipro` | - | - |
+| *Andy Su* | *40226463* | `@su_andy` | QA / DevOps / Product Owner | README documentation, DoD/DoR definitions, CI pipeline |
