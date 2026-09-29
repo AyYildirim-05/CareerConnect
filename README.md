@@ -240,5 +240,5 @@ CareerConnect/
 | *Ahmet Yusuf Yildirim* | *40340020* | `@AyYildirim-05` | Scrum Master | Repository setup, board initialization, registration UI/API, finalizing user stories |
 | *Darwinsh Saint-Jean* | *40341644* | `@Darivaci` | - | - |
 | *Shaarav Dhingra* | *40297531* | `@shaaravd` | - | - |
-| *Nassim Saidi4* | *40345885* | `@nassimsaidipro` | Backend / AI Specialist | PDF parsing ingestion pipeline, AI log documentation |
+| *Nassim Saidi4* | *40345885* | `@nassimsaidipro` | - | - |
 | *Full Name 5* | *Concordia ID* | `@github5` | QA / DevOps / Product Owner | README documentation, DoD/DoR definitions, CI pipeline |
