@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import Messages from './components/Messages';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
               }
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
           </Routes>
         </main>
       </Router>
