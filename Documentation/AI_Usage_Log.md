@@ -7,3 +7,5 @@
 | Ahmet | 2026-09-26 | [Chat Transcript (Gemini)](https://share.gemini.google/PTx4ZOdSKxDo) | Consulted AI to see if the README file template neeeds to be updated after finishing up all the user stories.|
 | Ahmet | 2026-09-26 | [Chat Transcript (Antigravity)]() | Used AI to debug the initial setup issues, resolve macOS port conflicts, and configure Firestore OOP data models |
 | Ahmet | 2026-10-01 | [Chat Transcript (Antigravity)]() | Added the ability to view the uploaded pdf file for demo purposes.s |
+| Su | 2026-10-01 | [[Chat Transcript (Antigravity)]()](https://claude.ai/share/4659938c-5711-4465-b5d2-2535b8a8f6eb 
+) | Added the ability for in-app messaging.
