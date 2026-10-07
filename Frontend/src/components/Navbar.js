@@ -16,6 +16,7 @@ export default function Navbar() {
       <strong>CareerConnect</strong> | {' '}
       {isAuthenticated && user ? (
         <>
+          <Link to="/dashboard">Dashboard</Link> | <Link to="/messages">Messages</Link> |{' '}
           <span>Logged in as: {user.email} ({user.role})</span>{' '}
           <button onClick={handleLogout}>Logout</button>
         </>

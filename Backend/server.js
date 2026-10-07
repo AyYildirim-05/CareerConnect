@@ -25,10 +25,15 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'CareerConnect Backend API is running' });
 });
 
+
 // Authentication Routes
 app.use('/api/auth', authRoutes);
 // Resume Routes
 app.use('/api/resumes', resumeRoutes);
+
+// Conversation and Message Routes
+const messageRoutes = require('./routes/messageRoutes');
+app.use('/api/conversations', messageRoutes);
 
 // 404 Handler
 app.use((req, res) => {
