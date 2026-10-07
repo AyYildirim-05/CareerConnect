@@ -8,3 +8,4 @@
 | Ahmet | 2026-09-26 | [Chat Transcript (Antigravity)]() | Used AI to debug the initial setup issues, resolve macOS port conflicts, and configure Firestore OOP data models |
 | Ahmet | 2026-10-01 | [Chat Transcript (Antigravity)]() | Added the ability to view the uploaded pdf file for demo purposes.s |
 | Su | 2026-10-01 | [[Chat Transcript (Antigravity)]()](https://claude.ai/share/4659938c-5711-4465-b5d2-2535b8a8f6eb ) | Added the ability for in-app messaging.
+| Darwinsh | 2026-10-07 | [[Chat Transcript (Antigravity)]()](https://claude.ai/share/1a525f48-a9cb-4a40-940d-1fc06b24801a ) | Job model creation and brainstorm.
