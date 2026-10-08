@@ -1,4 +1,4 @@
-const { JobPostingModel, RecruiterModel } = require('../models');
+const { JobPostingModel, RecruiterModel, CompanyModel } = require('../models');
 
 const REQUIRED_FIELDS = ['title', 'description', 'department', 'location', 'jobType', 'workMode', 'requirements'];
 
@@ -47,16 +47,25 @@ async function findOwnedJob(req, res) {
   return job;
 }
 
+const NO_COMPANY_ERROR = 'Set up your company page before posting jobs.';
+
 class JobController {
   /**
    * POST /api/jobs
-   * Create a job posting (draft by default, or published if body.publish is true)
+   * Create a job posting under the recruiter's company
+   * (draft by default, or published if body.publish is true)
    */
   static async create(req, res) {
     try {
       const { fields, errors } = validateJobFields(req.body);
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ message: 'Validation failed', errors });
+      }
+
+      // Jobs are always posted under the recruiter's own company
+      const company = await CompanyModel.findByOwner(req.user.id);
+      if (!company) {
+        return res.status(400).json({ error: NO_COMPANY_ERROR });
       }
 
       const recruiter = await RecruiterModel.findById(req.user.id);
@@ -66,7 +75,7 @@ class JobController {
 
       const job = await JobPostingModel.create({
         recruiterId: recruiter.id,
-        companyName: recruiter.recruiterProfile && recruiter.recruiterProfile.companyName,
+        company,
         fields,
         publish: req.body.publish === true
       });
@@ -99,7 +108,17 @@ class JobController {
         return res.status(400).json({ message: 'Validation failed', errors });
       }
 
-      const updatedJob = await JobPostingModel.update(job.id, fields);
+      // Re-link to the recruiter's company (also fixes postings made before companies existed)
+      const company = await CompanyModel.findByOwner(req.user.id);
+      if (!company) {
+        return res.status(400).json({ error: NO_COMPANY_ERROR });
+      }
+
+      const updatedJob = await JobPostingModel.update(job.id, {
+        ...fields,
+        companyId: company.id,
+        companyName: company.name
+      });
       return res.status(200).json({ message: 'Job posting updated.', job: updatedJob });
     } catch (error) {
       console.error('Update job posting error:', error);
@@ -120,11 +139,34 @@ class JobController {
         return res.status(200).json({ message: 'Job posting is already published.', job });
       }
 
+      if (!job.companyId) {
+        return res.status(400).json({ error: 'Edit and save this posting to link it to your company before publishing.' });
+      }
+
       const publishedJob = await JobPostingModel.publish(job.id);
       return res.status(200).json({ message: 'Job posting published!', job: publishedJob });
     } catch (error) {
       console.error('Publish job posting error:', error);
       return res.status(500).json({ message: 'Failed to publish job posting.' });
+    }
+  }
+
+  /**
+   * DELETE /api/jobs/:id
+   * Permanently delete a job posting owned by the logged-in recruiter
+   */
+  static async remove(req, res) {
+    try {
+      const job = await findOwnedJob(req, res);
+      if (!job) return;
+
+      await JobPostingModel.delete(job.id);
+      await RecruiterModel.removeJobPosting(job.recruiterId, job.id);
+
+      return res.status(200).json({ message: 'Job posting deleted.' });
+    } catch (error) {
+      console.error('Delete job posting error:', error);
+      return res.status(500).json({ message: 'Failed to delete job posting.' });
     }
   }
 

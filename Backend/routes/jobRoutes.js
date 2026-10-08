@@ -15,9 +15,10 @@ router.get('/mine', authorizeRoles('Recruiter'), JobController.listMine);
 
 router.get('/:id', JobController.getById);
 
-// Recruiter only: create, edit, publish
+// Recruiter only: create, edit, publish, delete
 router.post('/', authorizeRoles('Recruiter'), JobController.create);
 router.put('/:id', authorizeRoles('Recruiter'), JobController.update);
 router.patch('/:id/publish', authorizeRoles('Recruiter'), JobController.publish);
+router.delete('/:id', authorizeRoles('Recruiter'), JobController.remove);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { fetchMyJobs, publishJob } from '../services/jobService';
+import { fetchMyJobs, publishJob, deleteJob } from '../services/jobService';
 
 /**
  * Recruiter view of their own job postings (drafts and published),
@@ -37,6 +37,20 @@ export default function MyJobPostings() {
       setMessage(res.message);
     } catch (err) {
       setMessage(err.error || err.message || 'Failed to publish job posting.');
+    }
+  };
+
+  const handleDelete = async (job) => {
+    if (!window.confirm(`Delete "${job.title}"? This cannot be undone.`)) return;
+
+    setMessage('');
+    try {
+      const res = await deleteJob(job.id, token);
+      // Remove the deleted job from the list on screen
+      setJobs(jobs.filter((j) => j.id !== job.id));
+      setMessage(res.message);
+    } catch (err) {
+      setMessage(err.error || err.message || 'Failed to delete job posting.');
     }
   };
 
@@ -79,6 +93,8 @@ export default function MyJobPostings() {
                       <button type="button" onClick={() => handlePublish(job.id)}>Publish</button>
                     </>
                   )}
+                  {' '}
+                  <button type="button" onClick={() => handleDelete(job)}>Delete</button>
                 </td>
               </tr>
             ))}

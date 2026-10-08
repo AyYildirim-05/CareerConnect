@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ResumeUpload from "./ResumeUpload";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, company } = useAuth();
 
   if (!user) return null;
 
@@ -20,6 +20,7 @@ export default function Dashboard() {
         <div>
         <ul>
           <li><Link to="/jobs">Browse Job Listings</Link></li>
+          <li><Link to="/companies">Browse Companies</Link></li>
           <li>Resume Management & Parsing</li>
           <li>Application Status Tracking</li>
           <li>Saved Favorite Jobs</li>
@@ -28,6 +29,8 @@ export default function Dashboard() {
       </div>
       ) : (
         <ul>
+          {company && <li><Link to={`/companies/${company.id}`}>View My Company Page ({company.name})</Link></li>}
+          <li><Link to="/recruiter/company">Edit Company Profile</Link></li>
           <li><Link to="/recruiter/jobs/new">Post New Job Listings</Link></li>
           <li><Link to="/recruiter/jobs">Manage My Job Postings</Link></li>
           <li><Link to="/jobs">View Active Job Listings</Link></li>

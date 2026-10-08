@@ -2,7 +2,8 @@ const db = require('../config/db');
 
 /**
  * JobPostingModel
- * Handles job listings created by Recruiters. A posting starts as a 'draft'
+ * Handles job listings created by Recruiters. Every posting belongs to a company
+ * owned by its Recruiter. A posting starts as a 'draft'
  * and becomes visible in the active job listings once it is 'published'.
  */
 class JobPostingModel {
@@ -16,12 +17,12 @@ class JobPostingModel {
    * Create a new job posting in Firestore
    * @param {Object} params
    * @param {string} params.recruiterId
-   * @param {string} params.companyName
+   * @param {Object} params.company - The company this job is posted under
    * @param {Object} params.fields - { title, description, department, location, jobType, workMode, requirements }
    * @param {boolean} [params.publish=false] - Publish immediately instead of saving as draft
    * @returns {Promise<Object>} Created job posting
    */
-  static async create({ recruiterId, companyName, fields, publish = false }) {
+  static async create({ recruiterId, company, fields, publish = false }) {
     const firestore = db.getFirestore();
     if (!firestore) throw new Error('Firestore database is not initialized');
 
@@ -31,7 +32,8 @@ class JobPostingModel {
     const jobData = {
       id: docRef.id,
       recruiterId: String(recruiterId),
-      companyName: companyName || '',
+      companyId: company.id,
+      companyName: company.name,
       ...fields,
       status: publish ? this.STATUS_PUBLISHED : this.STATUS_DRAFT,
       publishedAt: publish ? now : null,
@@ -97,6 +99,47 @@ class JobPostingModel {
   }
 
   /**
+   * Find the published postings of one company (shown on its company page), newest first
+   * @param {string} companyId
+   * @returns {Promise<Array<Object>>}
+   */
+  static async findPublishedByCompany(companyId) {
+    const firestore = db.getFirestore();
+    if (!firestore) return [];
+
+    const snapshot = await firestore
+      .collection(this.COLLECTION)
+      .where('companyId', '==', String(companyId))
+      .get();
+
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(job => job.status === this.STATUS_PUBLISHED)
+      .sort((a, b) => (b.publishedAt || '').localeCompare(a.publishedAt || ''));
+  }
+
+  /**
+   * Copy a new company name onto all of a company's postings,
+   * so listings stay correct after the company is renamed
+   * @param {string} companyId
+   * @param {string} companyName
+   */
+  static async updateCompanyName(companyId, companyName) {
+    const firestore = db.getFirestore();
+    if (!firestore) return;
+
+    const snapshot = await firestore
+      .collection(this.COLLECTION)
+      .where('companyId', '==', String(companyId))
+      .get();
+    if (snapshot.empty) return;
+
+    const batch = firestore.batch();
+    snapshot.docs.forEach(doc => batch.update(doc.ref, { companyName }));
+    await batch.commit();
+  }
+
+  /**
    * Update the editable fields of a job posting
    * @param {string} id
    * @param {Object} fields
@@ -113,6 +156,18 @@ class JobPostingModel {
     await docRef.update(dataToSet);
     const updatedDoc = await docRef.get();
     return { id: updatedDoc.id, ...updatedDoc.data() };
+  }
+
+  /**
+   * Permanently delete a job posting
+   * @param {string} id
+   */
+  static async delete(id) {
+    if (!id) return;
+    const firestore = db.getFirestore();
+    if (!firestore) throw new Error('Firestore database is not initialized');
+
+    await firestore.collection(this.COLLECTION).doc(String(id)).delete();
   }
 
   /**

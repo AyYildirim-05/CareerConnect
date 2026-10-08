@@ -32,7 +32,7 @@ export default function JobPostingForm() {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
 
-  const { token } = useAuth();
+  const { token, company } = useAuth();
   const navigate = useNavigate();
 
   // In edit mode, load the existing posting into the form
@@ -118,6 +118,8 @@ export default function JobPostingForm() {
   return (
     <div>
       <h2>{isEditing ? 'Edit Job Posting' : 'Create Job Posting'}</h2>
+      {/* Jobs are always posted under the recruiter's own company */}
+      <p>Posting for: <Link to={`/companies/${company.id}`}><strong>{company.name}</strong></Link></p>
       {isEditing && <p>Status: <strong>{isPublished ? 'Published' : 'Draft'}</strong></p>}
 
       {serverError && <p style={{ color: 'red' }}>{serverError}</p>}

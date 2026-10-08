@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fetchPublishedJobs } from '../services/jobService';
+import JobCard from './JobCard';
 
 /**
  * Active job listings: every published job posting, newest first.
@@ -37,21 +38,7 @@ export default function JobListings() {
 
       {!error && jobs.length === 0 && <p>No open roles right now. Check back soon!</p>}
 
-      {jobs.map((job) => (
-        <div key={job.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0 }}>{job.title}</h3>
-          <p style={{ margin: '0.25rem 0' }}>
-            {job.companyName || 'Company not specified'} · {job.department} · {job.location}
-          </p>
-          <p style={{ margin: '0.25rem 0' }}>
-            <strong>{job.jobType}</strong> · <strong>{job.workMode}</strong>
-          </p>
-          <p style={{ whiteSpace: 'pre-wrap' }}>{job.description}</p>
-          <p><strong>Requirements:</strong></p>
-          <p style={{ whiteSpace: 'pre-wrap' }}>{job.requirements}</p>
-          <small>Posted {new Date(job.publishedAt).toLocaleDateString()}</small>
-        </div>
-      ))}
+      {jobs.map((job) => <JobCard key={job.id} job={job} />)}
     </div>
   );
 }
