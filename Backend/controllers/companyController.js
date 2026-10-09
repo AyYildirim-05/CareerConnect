@@ -1,4 +1,4 @@
-const { JobPostingModel, CompanyModel } = require('../models');
+const { JobPostingModel, CompanyModel, UserModel } = require('../models');
 
 const REQUIRED_FIELDS = ['name', 'description'];
 
@@ -49,11 +49,17 @@ class CompanyController {
 
   /**
    * GET /api/companies/mine
-   * The logged-in recruiter's company, or null if they haven't set it up yet
+   * The logged-in recruiter's company (owned or joined), or null if not set up yet
    */
   static async getMine(req, res) {
     try {
-      const company = await CompanyModel.findByOwner(req.user.id);
+      let company = await CompanyModel.findByOwner(req.user.id);
+      if (!company) {
+        const user = await UserModel.findById(req.user.id);
+        if (user && user.companyId) {
+          company = await CompanyModel.findById(user.companyId);
+        }
+      }
       return res.status(200).json({ company });
     } catch (error) {
       console.error('Get my company error:', error);
@@ -71,10 +77,19 @@ class CompanyController {
       if (existing) {
         return res.status(409).json({ error: 'You already have a company page. Edit it instead.' });
       }
+      const user = await UserModel.findById(req.user.id);
+      if (user && user.companyId) {
+        return res.status(409).json({ error: 'You are already a member of a company.' });
+      }
 
       const { fields, errors } = validateCompanyFields(req.body);
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ message: 'Validation failed', errors });
+      }
+
+      const nameTaken = await CompanyModel.findByName(fields.name);
+      if (nameTaken) {
+        return res.status(409).json({ message: 'Validation failed', errors: { name: 'A company with this name already exists. You can join it instead.' } });
       }
 
       const company = await CompanyModel.create({ ownerId: req.user.id, fields });
@@ -82,6 +97,32 @@ class CompanyController {
     } catch (error) {
       console.error('Create company error:', error);
       return res.status(500).json({ message: 'Failed to create company page.' });
+    }
+  }
+
+  /**
+   * POST /api/companies/:id/join
+   * Join an existing company as a member
+   */
+  static async join(req, res) {
+    try {
+      const owned = await CompanyModel.findByOwner(req.user.id);
+      if (owned) {
+        return res.status(409).json({ error: 'You already own a company.' });
+      }
+      const user = await UserModel.findById(req.user.id);
+      if (user && user.companyId) {
+        return res.status(409).json({ error: 'You are already a member of a company.' });
+      }
+      const company = await CompanyModel.findById(req.params.id);
+      if (!company) {
+        return res.status(404).json({ error: 'Company not found.' });
+      }
+      await UserModel.updateUser(req.user.id, { companyId: company.id });
+      return res.status(200).json({ message: 'You have joined the company.', company });
+    } catch (error) {
+      console.error('Join company error:', error);
+      return res.status(500).json({ error: 'Failed to join company.' });
     }
   }
 
@@ -99,6 +140,11 @@ class CompanyController {
       const { fields, errors } = validateCompanyFields(req.body);
       if (Object.keys(errors).length > 0) {
         return res.status(400).json({ message: 'Validation failed', errors });
+      }
+
+      const nameTaken = await CompanyModel.findByName(fields.name);
+      if (nameTaken && nameTaken.id !== company.id) {
+        return res.status(409).json({ message: 'Validation failed', errors: { name: 'A company with this name already exists.' } });
       }
 
       const updatedCompany = await CompanyModel.update(company.id, fields);

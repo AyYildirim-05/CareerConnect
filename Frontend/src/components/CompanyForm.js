@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { createCompany, updateMyCompany } from '../services/companyService';
+import { createCompany, updateMyCompany, joinCompany, fetchCompanies } from '../services/companyService';
 
 // Must match COMPANY_SIZES in Backend/models/companyModel.js
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
@@ -24,6 +24,12 @@ export default function CompanyForm() {
   const { token, company, setCompany } = useAuth();
   const isEditing = Boolean(company);
 
+  // 'choose' shown only to new recruiters; 'create' and 'join' are the two paths
+  const [mode, setMode] = useState(isEditing ? 'create' : 'choose');
+  const [companies, setCompanies] = useState([]);
+  const [joinError, setJoinError] = useState('');
+  const [joining, setJoining] = useState(false);
+
   const [form, setForm] = useState(() => {
     if (!company) return EMPTY_FORM;
     const { name, description, industry, size, website, location } = company;
@@ -34,6 +40,27 @@ export default function CompanyForm() {
   const [saving, setSaving] = useState(false);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (mode !== 'join') return;
+    fetchCompanies(token)
+      .then(res => setCompanies(res.companies || []))
+      .catch(() => setJoinError('Failed to load companies.'));
+  }, [mode, token]);
+
+  const handleJoin = async (id) => {
+    setJoinError('');
+    setJoining(true);
+    try {
+      const res = await joinCompany(id, token);
+      setCompany(res.company);
+      navigate(`/companies/${res.company.id}`);
+    } catch (err) {
+      setJoinError(err.error || err.message || 'Failed to join company.');
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -78,9 +105,48 @@ export default function CompanyForm() {
     }
   };
 
+  if (mode === 'choose') {
+    return (
+      <div>
+        <h2>Set Up Your Company</h2>
+        <p>Every recruiter is associated with a company. Create a new one or join an existing one.</p>
+        <button onClick={() => setMode('create')}>Create New Company</button>
+        {' '}
+        <button onClick={() => setMode('join')}>Join Existing Company</button>
+      </div>
+    );
+  }
+
+  if (mode === 'join') {
+    return (
+      <div>
+        <h2>Join a Company</h2>
+        <button onClick={() => setMode('choose')}>← Back</button>
+        {joinError && <p style={{ color: 'red' }}>{joinError}</p>}
+        {companies.length === 0 && !joinError && <p>No companies found.</p>}
+        <ul>
+          {companies.map(c => (
+            <li key={c.id}>
+              <strong>{c.name}</strong>
+              {c.industry && ` — ${c.industry}`}
+              {c.location && ` · ${c.location}`}
+              {' '}
+              <button onClick={() => handleJoin(c.id)} disabled={joining}>Join</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2>{isEditing ? 'Edit Company Profile' : 'Set Up Your Company Page'}</h2>
+      {!isEditing && (
+        <p>
+          <button onClick={() => setMode('choose')}>← Back</button>
+        </p>
+      )}
       {isEditing ? (
         <p>This is what job seekers see on your company page.</p>
       ) : (

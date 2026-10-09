@@ -15,6 +15,7 @@ router.get('/mine', authorizeRoles('Recruiter'), CompanyController.getMine);
 router.put('/mine', authorizeRoles('Recruiter'), CompanyController.updateMine);
 router.post('/', authorizeRoles('Recruiter'), CompanyController.create);
 
+router.post('/:id/join', authorizeRoles('Recruiter'), CompanyController.join);
 router.get('/:id', CompanyController.getById);
 
 module.exports = router;

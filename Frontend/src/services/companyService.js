@@ -42,3 +42,12 @@ export function createCompany(companyData, token) {
 export function updateMyCompany(companyData, token) {
   return apiRequest('/companies/mine', token, { method: 'PUT', body: companyData });
 }
+
+/**
+ * Join an existing company as a member
+ * @param {string} id
+ * @param {string} token
+ */
+export function joinCompany(id, token) {
+  return apiRequest(`/companies/${id}/join`, token, { method: 'POST' });
+}

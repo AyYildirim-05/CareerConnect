@@ -28,12 +28,34 @@ class CompanyModel {
       id: docRef.id,
       ownerId: String(ownerId),
       ...fields,
+      nameLower: (fields.name || '').trim().toLowerCase(),
       created_at: now,
       updated_at: now
     };
 
     await docRef.set(companyData);
     return companyData;
+  }
+
+  /**
+   * Find a company by name (case-insensitive)
+   * @param {string} name
+   * @returns {Promise<Object|null>}
+   */
+  static async findByName(name) {
+    const nameLower = (name || '').trim().toLowerCase();
+    if (!nameLower) return null;
+    const firestore = db.getFirestore();
+    if (!firestore) return null;
+
+    const snapshot = await firestore
+      .collection(this.COLLECTION)
+      .where('nameLower', '==', nameLower)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return null;
+    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
   }
 
   /**
@@ -97,7 +119,11 @@ class CompanyModel {
     if (!firestore) return null;
 
     const docRef = firestore.collection(this.COLLECTION).doc(String(id));
-    await docRef.update({ ...fields, updated_at: new Date().toISOString() });
+    const updateData = { ...fields, updated_at: new Date().toISOString() };
+    if (fields.name !== undefined) {
+      updateData.nameLower = fields.name.trim().toLowerCase();
+    }
+    await docRef.update(updateData);
     const updatedDoc = await docRef.get();
     return { id: updatedDoc.id, ...updatedDoc.data() };
   }
