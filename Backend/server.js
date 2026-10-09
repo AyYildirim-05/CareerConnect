@@ -5,6 +5,8 @@ require('dotenv').config();
 const db = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
+const jobRoutes = require('./routes/jobRoutes');
+const companyRoutes = require('./routes/companyRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5500;
@@ -29,6 +31,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 // Resume Routes
 app.use('/api/resumes', resumeRoutes);
+// Job Posting Routes
+app.use('/api/jobs', jobRoutes);
+// Company Page Routes
+app.use('/api/companies', companyRoutes);
 
 // 404 Handler
 app.use((req, res) => {

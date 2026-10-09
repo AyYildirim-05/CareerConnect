@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, company } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -16,6 +16,12 @@ export default function Navbar() {
       <strong>CareerConnect</strong> | {' '}
       {isAuthenticated && user ? (
         <>
+          <Link to="/dashboard">Dashboard</Link> | <Link to="/jobs">Jobs</Link> | <Link to="/companies">Companies</Link> |{' '}
+          {user.role === 'Recruiter' && (
+            <>
+              <Link to={company ? `/companies/${company.id}` : '/recruiter/company'}>My Company</Link> | <Link to="/recruiter/jobs">My Postings</Link> |{' '}
+            </>
+          )}
           <span>Logged in as: {user.email} ({user.role})</span>{' '}
           <button onClick={handleLogout}>Logout</button>
         </>
