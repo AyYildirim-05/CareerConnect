@@ -17,6 +17,12 @@ export default function Navbar() {
       {isAuthenticated && user ? (
         <>
           <Link to="/dashboard">Dashboard</Link> | <Link to="/jobs">Jobs</Link> | <Link to="/companies">Companies</Link> |{' '}
+            {user.role !== 'Recruiter' && (
+             <>
+              <Link to="/saved-jobs">Saved Jobs</Link> |{' '}
+          </>
+        )}
+        
           {user.role === 'Recruiter' && (
             <>
               <Link to={company ? `/companies/${company.id}` : '/recruiter/company'}>My Company</Link> | <Link to="/recruiter/jobs">My Postings</Link> |{' '}

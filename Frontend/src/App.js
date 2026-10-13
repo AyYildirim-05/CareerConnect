@@ -12,6 +12,7 @@ import JobPostingForm from './components/JobPostingForm';
 import Companies from './components/Companies';
 import CompanyPage from './components/CompanyPage';
 import CompanyForm from './components/CompanyForm';
+import SavedJobs from './components/SavedJobs';
 
 export default function App() {
   return (
@@ -38,6 +39,15 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route
+              path="/saved-jobs"
+              element={
+              <ProtectedRoute>
+                <SavedJobs />
+              </ProtectedRoute>
+            }
+/> 
             <Route
               path="/companies"
               element={

@@ -60,4 +60,31 @@ export function publishJob(id, token) {
  */
 export function deleteJob(id, token) {
   return apiRequest(`/jobs/${id}`, token, { method: 'DELETE' });
+  
+}
+
+/**
+ * Bookmark a job to the logged-in user's saved list
+ * @param {string} id
+ * @param {string} token
+ */
+export function saveJob(id, token) {
+  return apiRequest(`/jobs/${id}/save`, token, { method: 'POST' });
+}
+
+/**
+ * Remove a job from the saved list
+ * @param {string} id
+ * @param {string} token
+ */
+export function unsaveJob(id, token) {
+  return apiRequest(`/jobs/${id}/save`, token, { method: 'DELETE' });
+}
+
+/**
+ * Fetch the logged-in user's saved jobs
+ * @param {string} token
+ */
+export function fetchSavedJobs(token) {
+  return apiRequest('/jobs/saved', token);
 }
