@@ -10,3 +10,4 @@
 | Su | 2026-10-01 | [[Chat Transcript (Antigravity)]()](https://claude.ai/share/4659938c-5711-4465-b5d2-2535b8a8f6eb ) | Added the ability for in-app messaging.
 | Darwinsh | 2026-10-07 | [Chat Transcript (Claude)](https://claude.ai/share/1a525f48-a9cb-4a40-940d-1fc06b24801a ) | Job model creation and brainstorm.
 | Darwinsh | 2026-10-13 | [Chat Transcript (Claude)](https://claude.ai/share/6ef71fb0-6c7e-49c0-8108-13d6be89cbf2) | Brainstorming Saved Jobs layout + code.
+| Ahmet | 2026-10-01 | [Chat Transcript (Gemini)](https://share.gemini.google/rjvGI5EVwxeT) | Finished the Json parsing of a users cv (used ai to get a starting point, and a CLI tool to debug the later issues). |

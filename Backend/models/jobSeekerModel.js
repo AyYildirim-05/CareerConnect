@@ -98,12 +98,81 @@ class JobSeekerModel extends UserModel {
   }
 
   /**
-   * Update skills list for the Job Seeker
+   * Save parsed JSON resume profile to Firestore and sync relevant profile fields
    * @param {string} id 
-   * @param {Array<string>} skills 
+   * @param {Object} resumeJson 
+   * @returns {Promise<Object>}
    */
-  static async updateSkills(id, skills) {
-    return this.updateProfile(id, { skills });
+  static async saveResumeJson(id, resumeJson) {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+
+    const currentProfile = user.profile || {};
+    const updates = {
+      resumeJson,
+      resumeParsedAt: new Date().toISOString()
+    };
+
+    if (resumeJson.personalInfo) {
+      if (!currentProfile.firstName && resumeJson.personalInfo.firstName) {
+        updates.firstName = resumeJson.personalInfo.firstName;
+      }
+      if (!currentProfile.lastName && resumeJson.personalInfo.lastName) {
+        updates.lastName = resumeJson.personalInfo.lastName;
+      }
+      if (!currentProfile.phone && resumeJson.personalInfo.phone) {
+        updates.phone = resumeJson.personalInfo.phone;
+      }
+      if (!currentProfile.headline && resumeJson.personalInfo.summary) {
+        updates.headline = resumeJson.personalInfo.summary.slice(0, 200);
+      }
+    }
+
+    // Merge skills
+    if (resumeJson.skills && Array.isArray(resumeJson.skills.all) && resumeJson.skills.all.length > 0) {
+      const existing = Array.isArray(currentProfile.skills) ? currentProfile.skills : [];
+      updates.skills = Array.from(new Set([...existing, ...resumeJson.skills.all]));
+    }
+
+    // Sync categories
+    if (Array.isArray(resumeJson.workExperience) && resumeJson.workExperience.length > 0) {
+      updates.workExperience = resumeJson.workExperience;
+    }
+    if (Array.isArray(resumeJson.education) && resumeJson.education.length > 0) {
+      updates.education = resumeJson.education;
+    }
+    if (Array.isArray(resumeJson.projects) && resumeJson.projects.length > 0) {
+      updates.projects = resumeJson.projects;
+    }
+    if (Array.isArray(resumeJson.extracurriculars) && resumeJson.extracurriculars.length > 0) {
+      updates.extracurriculars = resumeJson.extracurriculars;
+    }
+    if (Array.isArray(resumeJson.volunteerExperience) && resumeJson.volunteerExperience.length > 0) {
+      updates.volunteerExperience = resumeJson.volunteerExperience;
+    }
+    if (Array.isArray(resumeJson.certifications) && resumeJson.certifications.length > 0) {
+      updates.certifications = resumeJson.certifications;
+    }
+
+    const updatedProfile = {
+      ...currentProfile,
+      ...updates
+    };
+
+    return this.updateUser(id, { profile: updatedProfile });
+  }
+
+  /**
+   * Retrieve saved resume JSON from user profile
+   * @param {string} id 
+   * @returns {Promise<Object|null>}
+   */
+  static async getResumeJson(id) {
+    const user = await this.findById(id);
+    if (!user) return null;
+    return user.profile?.resumeJson || null;
   }
 }
 

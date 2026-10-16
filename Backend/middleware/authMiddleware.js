@@ -27,6 +27,25 @@ function authenticateToken(req, res, next) {
 }
 
 /**
+ * Middleware to optionally verify JWT token if provided
+ */
+function optionalAuthenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (!err && decoded) {
+      req.user = decoded;
+    }
+    next();
+  });
+}
+
+/**
  * Middleware to enforce specific user role(s)
  * @param {Array<string>|string} allowedRoles 
  */
@@ -43,5 +62,7 @@ function authorizeRoles(...allowedRoles) {
 
 module.exports = {
   authenticateToken,
+  optionalAuthenticateToken,
   authorizeRoles
 };
+
