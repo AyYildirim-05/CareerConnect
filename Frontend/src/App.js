@@ -13,6 +13,7 @@ import Companies from './components/Companies';
 import CompanyPage from './components/CompanyPage';
 import CompanyForm from './components/CompanyForm';
 import SavedJobs from './components/SavedJobs';
+import Messages from './components/Messages';
 
 export default function App() {
   return (
@@ -96,8 +97,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
             <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
       </Router>

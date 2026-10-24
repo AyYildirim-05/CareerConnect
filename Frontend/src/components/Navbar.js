@@ -28,6 +28,7 @@ export default function Navbar() {
               <Link to={company ? `/companies/${company.id}` : '/recruiter/company'}>My Company</Link> | <Link to="/recruiter/jobs">My Postings</Link> |{' '}
             </>
           )}
+          <Link to="/messages">Messages</Link> |{' '}
           <span>Logged in as: {user.email} ({user.role})</span>{' '}
           <button onClick={handleLogout}>Logout</button>
         </>
