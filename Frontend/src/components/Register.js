@@ -53,7 +53,8 @@ export default function Register() {
     setLoading(true);
     try {
       await register(email.trim(), password, role);
-      navigate('/dashboard');
+      // New recruiters set up their company page before anything else
+      navigate(role === 'Recruiter' ? '/recruiter/company' : '/dashboard');
     } catch (err) {
       if (err.errors) {
         setErrors(err.errors);

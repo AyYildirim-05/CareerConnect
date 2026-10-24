@@ -94,6 +94,21 @@ class RecruiterModel extends UserModel {
 
     return this.updateUser(id, { jobPostings: currentPostings });
   }
+
+  /**
+   * Detach a deleted job posting ID from the recruiter's listings
+   * @param {string} id
+   * @param {string} jobPostingId
+   */
+  static async removeJobPosting(id, jobPostingId) {
+    const user = await this.findById(id);
+    if (!user || user.role !== this.ROLE) {
+      throw new Error('Recruiter not found.');
+    }
+
+    const currentPostings = (user.jobPostings || []).filter(postingId => postingId !== jobPostingId);
+    return this.updateUser(id, { jobPostings: currentPostings });
+  }
 }
 
 module.exports = RecruiterModel;
