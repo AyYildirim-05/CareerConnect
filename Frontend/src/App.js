@@ -97,6 +97,7 @@ export default function App() {
               }
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
           </Routes>
         </main>
       </Router>
