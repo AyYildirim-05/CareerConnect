@@ -11,3 +11,5 @@
 | Darwinsh | 2026-10-07 | [Chat Transcript (Claude)](https://claude.ai/share/1a525f48-a9cb-4a40-940d-1fc06b24801a ) | Job model creation and brainstorm.
 | Darwinsh | 2026-10-13 | [Chat Transcript (Claude)](https://claude.ai/share/6ef71fb0-6c7e-49c0-8108-13d6be89cbf2) | Brainstorming Saved Jobs layout + code.
 | Ahmet | 2026-10-01 | [Chat Transcript (Gemini)](https://share.gemini.google/rjvGI5EVwxeT) | Finished the Json parsing of a users cv (used ai to get a starting point, and a CLI tool to debug the later issues). |
+| Ahmet | 2026-10-20 | [Chat Transcript (Gemini)](https://share.gemini.google/Q3TjbEES4LIX) | With the help AI I fixed issues between backend and frontend communications routes. |
+| Ahmet | 2026-10-23 | [Chat Transcript (Antigravity)](AI_Log/Ahmet/Antigravity_Chat_Log_2026-10-23.md) | Extracted ResumeUpload component styling into dedicated CSS stylesheet (ResumeUpload.css), polished backend test suites, and replaced placeholder mock data with real candidate fixtures. |

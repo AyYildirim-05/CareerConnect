@@ -1,45 +1,203 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   uploadResume,
   uploadJsonProfile,
   fetchResumeProfile,
+  updateResumeProfile,
   exportJsonFile,
 } from '../services/resumeService';
+
+import './ResumeUpload.css';
 
 function ResumeUpload() {
   const { user, token } = useAuth();
   const jsonFileInputRef = useRef(null);
 
+  // Upload & File State
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileType, setFileType] = useState(null); // 'pdf' | 'json' | null
-  const [message, setMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState({ text: '', type: 'info' });
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploadedFileInfo, setUploadedFileInfo] = useState(null);
-  const [parsedProfile, setParsedProfile] = useState(null);
-  const [savedToFirestore, setSavedToFirestore] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [showRawJson, setShowRawJson] = useState(false);
 
-  // If user already has a saved parsed resume profile in Firestore, load it initially
+  // Profile JSON Data State
+  const [parsedProfile, setParsedProfile] = useState(null);
+  const [originalSavedProfile, setOriginalSavedProfile] = useState(null);
+  const [savedToFirestore, setSavedToFirestore] = useState(false);
+  const [lastSavedTimestamp, setLastSavedTimestamp] = useState(null);
+
+  // Edit and View Mode State
+  const [isEditMode, setIsEditMode] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [autoSync, setAutoSync] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Raw JSON Editor State
+  const [rawJsonText, setRawJsonText] = useState('');
+  const [jsonError, setJsonError] = useState('');
+
+  // Skill Quick-add inputs
+  const [newLanguageInput, setNewLanguageInput] = useState('');
+  const [newToolInput, setNewToolInput] = useState('');
+  const [newOtherSkillInput, setNewOtherSkillInput] = useState('');
+
+  // Project Quick-add tech
+  const [newProjectTech, setNewProjectTech] = useState({});
+
+  // Additional section quick inputs
+  const [newSpokenLangInput, setNewSpokenLangInput] = useState('');
+  const [newInterestInput, setNewInterestInput] = useState('');
+
+  // Helper to safely clone objects
+  const deepClone = (obj) => JSON.parse(JSON.stringify(obj || {}));
+
+  // Helper to ensure all required profile categories exist
+  const normalizeProfile = useCallback((profile) => {
+    if (!profile) return null;
+    const cloned = deepClone(profile);
+    cloned.personalInfo = cloned.personalInfo || {
+      fullName: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      location: '',
+      linkedin: '',
+      github: '',
+      website: '',
+      summary: '',
+    };
+    cloned.workExperience = Array.isArray(cloned.workExperience) ? cloned.workExperience : [];
+    cloned.education = Array.isArray(cloned.education) ? cloned.education : [];
+    cloned.skills = cloned.skills || { categories: {}, all: [] };
+    cloned.skills.categories = cloned.skills.categories || {};
+    cloned.skills.categories.languages = Array.isArray(cloned.skills.categories.languages)
+      ? cloned.skills.categories.languages
+      : [];
+    cloned.skills.categories.frameworksAndTools = Array.isArray(cloned.skills.categories.frameworksAndTools)
+      ? cloned.skills.categories.frameworksAndTools
+      : [];
+    cloned.skills.categories.other = Array.isArray(cloned.skills.categories.other)
+      ? cloned.skills.categories.other
+      : [];
+    cloned.skills.all = Array.isArray(cloned.skills.all) ? cloned.skills.all : [];
+    cloned.projects = Array.isArray(cloned.projects) ? cloned.projects : [];
+    cloned.extracurriculars = Array.isArray(cloned.extracurriculars) ? cloned.extracurriculars : [];
+    cloned.volunteerExperience = Array.isArray(cloned.volunteerExperience) ? cloned.volunteerExperience : [];
+    cloned.certifications = Array.isArray(cloned.certifications) ? cloned.certifications : [];
+    cloned.additional = cloned.additional || { languages: [], interests: [] };
+    cloned.additional.languages = Array.isArray(cloned.additional.languages) ? cloned.additional.languages : [];
+    cloned.additional.interests = Array.isArray(cloned.additional.interests) ? cloned.additional.interests : [];
+    return cloned;
+  }, []);
+
+  // Set message helper
+  const showNotification = (text, type = 'info') => {
+    setStatusMessage({ text, type });
+  };
+
+  // Sync working profile changes and mark dirty
+  const updateProfileData = (updater) => {
+    setParsedProfile((prev) => {
+      const updated = updater(deepClone(prev));
+      setIsDirty(true);
+      return updated;
+    });
+  };
+
+  // Initial load: fetch saved profile from Firebase Firestore if available
   useEffect(() => {
     if (user?.profile?.resumeJson) {
-      setParsedProfile(user.profile.resumeJson);
+      const norm = normalizeProfile(user.profile.resumeJson);
+      setParsedProfile(norm);
+      setOriginalSavedProfile(deepClone(norm));
       setSavedToFirestore(true);
+      setLastSavedTimestamp(user.profile.resumeUpdatedAt || user.profile.resumeParsedAt || null);
     } else if (token) {
       fetchResumeProfile(token)
         .then((res) => {
           if (res.resumeJson) {
-            setParsedProfile(res.resumeJson);
+            const norm = normalizeProfile(res.resumeJson);
+            setParsedProfile(norm);
+            setOriginalSavedProfile(deepClone(norm));
             setSavedToFirestore(true);
+            setLastSavedTimestamp(new Date().toISOString());
           }
         })
         .catch(() => {
-          // No saved profile yet; normal state
+          // Normal state if no resume uploaded yet
         });
     }
-  }, [user, token]);
+  }, [user, token, normalizeProfile]);
+
+  // Keep Raw JSON text synced with active profile changes
+  useEffect(() => {
+    if (parsedProfile) {
+      setRawJsonText(JSON.stringify(parsedProfile, null, 2));
+    }
+  }, [parsedProfile]);
+
+  // Save current profile directly to Firebase Firestore
+  const handleSaveToFirebase = useCallback(
+    async (profileToSave = null) => {
+      const target = profileToSave || parsedProfile;
+      if (!target) return;
+
+      if (!token) {
+        showNotification(
+          'Please log in to save your edited resume profile directly to Firebase.',
+          'error'
+        );
+        return;
+      }
+
+      try {
+        setIsSaving(true);
+        setJsonError('');
+
+        const result = await updateResumeProfile(target, token);
+
+        const savedData = normalizeProfile(result.resumeJson || target);
+        setParsedProfile(savedData);
+        setOriginalSavedProfile(deepClone(savedData));
+        setIsDirty(false);
+        setSavedToFirestore(true);
+        const timestamp = new Date().toISOString();
+        setLastSavedTimestamp(timestamp);
+        showNotification('✓ Modifications saved directly to your profile in Firebase!', 'success');
+      } catch (err) {
+        console.error('Save to Firebase error:', err);
+        showNotification(err.message || 'Failed to save changes to Firebase.', 'error');
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [token, parsedProfile, normalizeProfile]
+  );
+
+  // Auto-sync effect: automatically save changes after 1.5s of inactivity if enabled
+  useEffect(() => {
+    if (!autoSync || !isDirty || !token || !parsedProfile || isSaving) return;
+
+    const timer = setTimeout(() => {
+      handleSaveToFirebase(parsedProfile);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [parsedProfile, isDirty, autoSync, token, isSaving, handleSaveToFirebase]);
+
+  // Revert unsaved modifications back to the last saved Firebase state
+  const handleDiscardChanges = () => {
+    if (!originalSavedProfile) return;
+    if (window.confirm('Are you sure you want to discard all unsaved edits?')) {
+      setParsedProfile(deepClone(originalSavedProfile));
+      setIsDirty(false);
+      showNotification('Discarded unsaved modifications.', 'info');
+    }
+  };
 
   const formatFileSize = (bytes) => {
     if (!bytes) return '';
@@ -50,7 +208,7 @@ function ResumeUpload() {
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    setMessage('');
+    showNotification('', 'info');
 
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -70,7 +228,7 @@ function ResumeUpload() {
     if (!isPdf && !isJson) {
       setSelectedFile(null);
       setFileType(null);
-      setMessage('Please select a PDF (.pdf) or JSON (.json) resume file.');
+      showNotification('Please select a PDF (.pdf) or JSON (.json) resume file.', 'error');
       return;
     }
 
@@ -78,7 +236,7 @@ function ResumeUpload() {
     if (file.size > maxSize) {
       setSelectedFile(null);
       setFileType(null);
-      setMessage('File must be 5 MB or smaller.');
+      showNotification('File must be 5 MB or smaller.', 'error');
       return;
     }
 
@@ -91,13 +249,13 @@ function ResumeUpload() {
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
-      setMessage('Please select a valid .json file.');
+      showNotification('Please select a valid .json file.', 'error');
       return;
     }
 
     try {
       setIsUploading(true);
-      setMessage('');
+      showNotification('', 'info');
 
       const text = await file.text();
       let parsedData;
@@ -108,14 +266,18 @@ function ResumeUpload() {
       }
 
       const result = await uploadJsonProfile(parsedData, token);
+      const normalized = normalizeProfile(result.parsedProfile || parsedData);
 
-      setMessage(result.message);
-      setParsedProfile(result.parsedProfile);
+      showNotification(result.message || 'JSON profile synced to Firebase!', 'success');
+      setParsedProfile(normalized);
+      setOriginalSavedProfile(deepClone(normalized));
+      setIsDirty(false);
       setSavedToFirestore(Boolean(result.savedToProfile));
+      setLastSavedTimestamp(new Date().toISOString());
       setSelectedFile(file);
       setFileType('json');
     } catch (err) {
-      setMessage(err.message);
+      showNotification(err.message, 'error');
     } finally {
       setIsUploading(false);
       if (jsonFileInputRef.current) {
@@ -126,13 +288,13 @@ function ResumeUpload() {
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      setMessage('Please select a PDF or JSON resume file first.');
+      showNotification('Please select a PDF or JSON resume file first.', 'error');
       return;
     }
 
     try {
       setIsUploading(true);
-      setMessage('');
+      showNotification('', 'info');
 
       if (fileType === 'json') {
         const text = await selectedFile.text();
@@ -144,17 +306,25 @@ function ResumeUpload() {
         }
 
         const result = await uploadJsonProfile(jsonData, token);
-        setMessage(result.message);
-        setParsedProfile(result.parsedProfile);
+        const normalized = normalizeProfile(result.parsedProfile || jsonData);
+        showNotification(result.message || 'JSON profile saved to Firebase!', 'success');
+        setParsedProfile(normalized);
+        setOriginalSavedProfile(deepClone(normalized));
+        setIsDirty(false);
         setSavedToFirestore(Boolean(result.savedToProfile));
+        setLastSavedTimestamp(new Date().toISOString());
       } else {
         // PDF upload & parse
         const result = await uploadResume(selectedFile, token);
+        showNotification(result.message || 'Resume parsed successfully!', 'success');
 
-        setMessage(result.message);
         if (result.parsedProfile) {
-          setParsedProfile(result.parsedProfile);
+          const normalized = normalizeProfile(result.parsedProfile);
+          setParsedProfile(normalized);
+          setOriginalSavedProfile(deepClone(normalized));
+          setIsDirty(false);
           setSavedToFirestore(Boolean(result.savedToProfile));
+          setLastSavedTimestamp(new Date().toISOString());
         }
 
         const fileUrl = URL.createObjectURL(selectedFile);
@@ -165,7 +335,7 @@ function ResumeUpload() {
         });
       }
     } catch (error) {
-      setMessage(error.message);
+      showNotification(error.message, 'error');
     } finally {
       setIsUploading(false);
     }
@@ -179,7 +349,7 @@ function ResumeUpload() {
     setSelectedFile(null);
     setFileType(null);
     setUploadedFileInfo(null);
-    setMessage('');
+    showNotification('', 'info');
   };
 
   const handleDownloadJson = () => {
@@ -190,48 +360,439 @@ function ResumeUpload() {
     exportJsonFile(parsedProfile, `${safeName}_resume_profile.json`);
   };
 
+  // ==========================================
+  // FIELD MODIFICATION HANDLERS
+  // ==========================================
+
+  // 1. Personal Information
+  const handlePersonalInfoChange = (field, value) => {
+    updateProfileData((draft) => {
+      draft.personalInfo = draft.personalInfo || {};
+      draft.personalInfo[field] = value;
+      // Auto-update firstName/lastName when fullName is modified
+      if (field === 'fullName') {
+        const parts = value.trim().split(/\s+/);
+        if (parts.length > 0) {
+          draft.personalInfo.firstName = parts[0];
+          draft.personalInfo.lastName = parts.slice(1).join(' ');
+        }
+      }
+      return draft;
+    });
+  };
+
+  // 2. Work Experience
+  const handleAddExperience = () => {
+    updateProfileData((draft) => {
+      draft.workExperience = draft.workExperience || [];
+      draft.workExperience.unshift({
+        title: '',
+        company: '',
+        location: '',
+        dates: '',
+        bullets: [''],
+      });
+      return draft;
+    });
+  };
+
+  const handleUpdateExperience = (idx, field, value) => {
+    updateProfileData((draft) => {
+      if (draft.workExperience[idx]) {
+        draft.workExperience[idx][field] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveExperience = (idx) => {
+    updateProfileData((draft) => {
+      draft.workExperience.splice(idx, 1);
+      return draft;
+    });
+  };
+
+  const handleAddExperienceBullet = (expIdx) => {
+    updateProfileData((draft) => {
+      if (draft.workExperience[expIdx]) {
+        draft.workExperience[expIdx].bullets = draft.workExperience[expIdx].bullets || [];
+        draft.workExperience[expIdx].bullets.push('');
+      }
+      return draft;
+    });
+  };
+
+  const handleUpdateExperienceBullet = (expIdx, bulletIdx, value) => {
+    updateProfileData((draft) => {
+      if (draft.workExperience[expIdx] && draft.workExperience[expIdx].bullets) {
+        draft.workExperience[expIdx].bullets[bulletIdx] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveExperienceBullet = (expIdx, bulletIdx) => {
+    updateProfileData((draft) => {
+      if (draft.workExperience[expIdx] && draft.workExperience[expIdx].bullets) {
+        draft.workExperience[expIdx].bullets.splice(bulletIdx, 1);
+      }
+      return draft;
+    });
+  };
+
+  // 3. Education
+  const handleAddEducation = () => {
+    updateProfileData((draft) => {
+      draft.education = draft.education || [];
+      draft.education.unshift({
+        institution: '',
+        degree: '',
+        dates: '',
+        gpa: '',
+      });
+      return draft;
+    });
+  };
+
+  const handleUpdateEducation = (idx, field, value) => {
+    updateProfileData((draft) => {
+      if (draft.education[idx]) {
+        draft.education[idx][field] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveEducation = (idx) => {
+    updateProfileData((draft) => {
+      draft.education.splice(idx, 1);
+      return draft;
+    });
+  };
+
+  // 4. Skills
+  const handleAddSkill = (category, skillName) => {
+    const trimmed = skillName.trim();
+    if (!trimmed) return;
+
+    updateProfileData((draft) => {
+      draft.skills = draft.skills || { categories: {}, all: [] };
+      draft.skills.categories = draft.skills.categories || {};
+      draft.skills.categories[category] = draft.skills.categories[category] || [];
+
+      if (!draft.skills.categories[category].includes(trimmed)) {
+        draft.skills.categories[category].push(trimmed);
+      }
+      if (!draft.skills.all.includes(trimmed)) {
+        draft.skills.all.push(trimmed);
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveSkill = (category, skillName) => {
+    updateProfileData((draft) => {
+      if (draft.skills && draft.skills.categories && draft.skills.categories[category]) {
+        draft.skills.categories[category] = draft.skills.categories[category].filter(
+          (s) => s !== skillName
+        );
+      }
+      // Also check if skill remains in any other category
+      const stillInOtherCategory = Object.values(draft.skills.categories || {}).some(
+        (arr) => Array.isArray(arr) && arr.includes(skillName)
+      );
+      if (!stillInOtherCategory) {
+        draft.skills.all = draft.skills.all.filter((s) => s !== skillName);
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveSkillFromAll = (skillName) => {
+    updateProfileData((draft) => {
+      if (draft.skills) {
+        draft.skills.all = (draft.skills.all || []).filter((s) => s !== skillName);
+        if (draft.skills.categories) {
+          Object.keys(draft.skills.categories).forEach((cat) => {
+            if (Array.isArray(draft.skills.categories[cat])) {
+              draft.skills.categories[cat] = draft.skills.categories[cat].filter(
+                (s) => s !== skillName
+              );
+            }
+          });
+        }
+      }
+      return draft;
+    });
+  };
+
+  // 5. Projects
+  const handleAddProject = () => {
+    updateProfileData((draft) => {
+      draft.projects = draft.projects || [];
+      draft.projects.unshift({
+        name: '',
+        link: '',
+        dates: '',
+        techStack: [],
+        bullets: [''],
+      });
+      return draft;
+    });
+  };
+
+  const handleUpdateProject = (idx, field, value) => {
+    updateProfileData((draft) => {
+      if (draft.projects[idx]) {
+        draft.projects[idx][field] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveProject = (idx) => {
+    updateProfileData((draft) => {
+      draft.projects.splice(idx, 1);
+      return draft;
+    });
+  };
+
+  const handleAddProjectTech = (projIdx, tech) => {
+    const trimmed = tech.trim();
+    if (!trimmed) return;
+    updateProfileData((draft) => {
+      if (draft.projects[projIdx]) {
+        draft.projects[projIdx].techStack = draft.projects[projIdx].techStack || [];
+        if (!draft.projects[projIdx].techStack.includes(trimmed)) {
+          draft.projects[projIdx].techStack.push(trimmed);
+        }
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveProjectTech = (projIdx, tech) => {
+    updateProfileData((draft) => {
+      if (draft.projects[projIdx] && draft.projects[projIdx].techStack) {
+        draft.projects[projIdx].techStack = draft.projects[projIdx].techStack.filter(
+          (t) => t !== tech
+        );
+      }
+      return draft;
+    });
+  };
+
+  const handleAddProjectBullet = (projIdx) => {
+    updateProfileData((draft) => {
+      if (draft.projects[projIdx]) {
+        draft.projects[projIdx].bullets = draft.projects[projIdx].bullets || [];
+        draft.projects[projIdx].bullets.push('');
+      }
+      return draft;
+    });
+  };
+
+  const handleUpdateProjectBullet = (projIdx, bulletIdx, value) => {
+    updateProfileData((draft) => {
+      if (draft.projects[projIdx] && draft.projects[projIdx].bullets) {
+        draft.projects[projIdx].bullets[bulletIdx] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveProjectBullet = (projIdx, bulletIdx) => {
+    updateProfileData((draft) => {
+      if (draft.projects[projIdx] && draft.projects[projIdx].bullets) {
+        draft.projects[projIdx].bullets.splice(bulletIdx, 1);
+      }
+      return draft;
+    });
+  };
+
+  // 6. Extracurriculars
+  const handleAddExtracurricular = () => {
+    updateProfileData((draft) => {
+      draft.extracurriculars = draft.extracurriculars || [];
+      draft.extracurriculars.unshift({
+        title: '',
+        organization: '',
+        dates: '',
+        description: '',
+      });
+      return draft;
+    });
+  };
+
+  const handleUpdateExtracurricular = (idx, field, value) => {
+    updateProfileData((draft) => {
+      if (draft.extracurriculars[idx]) {
+        draft.extracurriculars[idx][field] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveExtracurricular = (idx) => {
+    updateProfileData((draft) => {
+      draft.extracurriculars.splice(idx, 1);
+      return draft;
+    });
+  };
+
+  // 7. Volunteer
+  const handleAddVolunteer = () => {
+    updateProfileData((draft) => {
+      draft.volunteerExperience = draft.volunteerExperience || [];
+      draft.volunteerExperience.unshift({
+        role: '',
+        organization: '',
+        dates: '',
+        description: '',
+      });
+      return draft;
+    });
+  };
+
+  const handleUpdateVolunteer = (idx, field, value) => {
+    updateProfileData((draft) => {
+      if (draft.volunteerExperience[idx]) {
+        draft.volunteerExperience[idx][field] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveVolunteer = (idx) => {
+    updateProfileData((draft) => {
+      draft.volunteerExperience.splice(idx, 1);
+      return draft;
+    });
+  };
+
+  // 8. Certifications
+  const handleAddCertification = () => {
+    updateProfileData((draft) => {
+      draft.certifications = draft.certifications || [];
+      draft.certifications.unshift({
+        name: '',
+        issuer: '',
+        date: '',
+      });
+      return draft;
+    });
+  };
+
+  const handleUpdateCertification = (idx, field, value) => {
+    updateProfileData((draft) => {
+      if (draft.certifications[idx]) {
+        draft.certifications[idx][field] = value;
+      }
+      return draft;
+    });
+  };
+
+  const handleRemoveCertification = (idx) => {
+    updateProfileData((draft) => {
+      draft.certifications.splice(idx, 1);
+      return draft;
+    });
+  };
+
+  // 9. Additional (Languages & Interests)
+  const handleAddSpokenLanguage = (lang) => {
+    const trimmed = lang.trim();
+    if (!trimmed) return;
+    updateProfileData((draft) => {
+      draft.additional = draft.additional || {};
+      draft.additional.languages = draft.additional.languages || [];
+      if (!draft.additional.languages.includes(trimmed)) {
+        draft.additional.languages.push(trimmed);
+      }
+      return draft;
+    });
+    setNewSpokenLangInput('');
+  };
+
+  const handleRemoveSpokenLanguage = (lang) => {
+    updateProfileData((draft) => {
+      if (draft.additional && draft.additional.languages) {
+        draft.additional.languages = draft.additional.languages.filter((l) => l !== lang);
+      }
+      return draft;
+    });
+  };
+
+  const handleAddInterest = (interest) => {
+    const trimmed = interest.trim();
+    if (!trimmed) return;
+    updateProfileData((draft) => {
+      draft.additional = draft.additional || {};
+      draft.additional.interests = draft.additional.interests || [];
+      if (!draft.additional.interests.includes(trimmed)) {
+        draft.additional.interests.push(trimmed);
+      }
+      return draft;
+    });
+    setNewInterestInput('');
+  };
+
+  const handleRemoveInterest = (interest) => {
+    updateProfileData((draft) => {
+      if (draft.additional && draft.additional.interests) {
+        draft.additional.interests = draft.additional.interests.filter((i) => i !== interest);
+      }
+      return draft;
+    });
+  };
+
+  // 10. Raw JSON Editor Save
+  const handleSaveRawJson = () => {
+    try {
+      setJsonError('');
+      const parsed = JSON.parse(rawJsonText);
+      const normalized = normalizeProfile(parsed);
+      setParsedProfile(normalized);
+      handleSaveToFirebase(normalized);
+    } catch (err) {
+      setJsonError(`Invalid JSON Syntax: ${err.message}`);
+    }
+  };
+
+  const handleFormatRawJson = () => {
+    try {
+      setJsonError('');
+      const parsed = JSON.parse(rawJsonText);
+      setRawJsonText(JSON.stringify(parsed, null, 2));
+    } catch (err) {
+      setJsonError(`Cannot format: ${err.message}`);
+    }
+  };
+
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '1rem 0' }}>
-      <h2>Resume Management & Parsing</h2>
-      <p style={{ color: '#555' }}>
-        Upload your resume in PDF format (maximum 5 MB). Our parser extracts your personal info, work experience,
-        education, projects, skills, extracurriculars, volunteer work, and saves your profile to Firebase.
+    <div className="resume-container">
+      <h2 className="resume-header-title">Resume Management & Parsing</h2>
+      <p className="resume-subtitle">
+        Upload your resume in PDF format or JSON format. You can manually edit, add, or remove any field
+        over the parsed data, and all modifications sync directly to your profile in Firebase.
       </p>
 
       {/* Upload Controls Box */}
-      <div
-        style={{
-          border: '1px solid #dcdfe3',
-          padding: '1.25rem',
-          borderRadius: '8px',
-          backgroundColor: '#ffffff',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      <div className="resume-upload-card">
+        <div className="resume-upload-actions">
           <input
             type="file"
             accept=".pdf,application/pdf,.json,application/json"
             onChange={handleFileChange}
             id="resume-file-input"
+            className="resume-file-input"
           />
 
           <button
             type="button"
             onClick={handleUpload}
             disabled={!selectedFile || isUploading}
-            style={{
-              padding: '8px 18px',
-              backgroundColor: '#0066cc',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: selectedFile && !isUploading ? 'pointer' : 'not-allowed',
-              fontWeight: 'bold',
-            }}
+            className="resume-btn resume-btn-primary"
           >
             {isUploading
               ? 'Uploading & Processing...'
@@ -246,25 +807,14 @@ function ResumeUpload() {
             accept=".json,application/json"
             ref={jsonFileInputRef}
             onChange={handleDirectJsonUpload}
-            style={{ display: 'none' }}
+            className="resume-hidden-input"
             id="json-file-input"
           />
           <button
             type="button"
             onClick={() => jsonFileInputRef.current && jsonFileInputRef.current.click()}
             disabled={isUploading}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#4a5568',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isUploading ? 'not-allowed' : 'pointer',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            className="resume-btn resume-btn-secondary"
           >
             📁 Upload JSON Format
           </button>
@@ -273,13 +823,7 @@ function ResumeUpload() {
             <button
               type="button"
               onClick={handleClear}
-              style={{
-                padding: '8px 14px',
-                border: '1px solid #ccc',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
+              className="resume-btn resume-btn-light"
             >
               Clear Preview
             </button>
@@ -289,18 +833,7 @@ function ResumeUpload() {
             <button
               type="button"
               onClick={handleDownloadJson}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#2e7d32',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className="resume-btn resume-btn-success"
             >
               ⬇ Download Profile JSON
             </button>
@@ -308,306 +841,463 @@ function ResumeUpload() {
         </div>
 
         {selectedFile && (
-          <p style={{ margin: 0, fontSize: '14px', color: '#333' }}>
+          <p className="resume-selected-file">
             Selected: <strong>{selectedFile.name}</strong> ({formatFileSize(selectedFile.size)})
           </p>
         )}
 
-        {message && (
-          <div
-            style={{
-              padding: '10px 14px',
-              borderRadius: '4px',
-              backgroundColor: message.includes('Failed') || message.includes('Please') ? '#fde8e8' : '#e8f5e9',
-              color: message.includes('Failed') || message.includes('Please') ? '#c53030' : '#2e7d32',
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            {message}
+        {statusMessage.text && (
+          <div className={`resume-status-message ${statusMessage.type}`}>
+            <span>{statusMessage.text}</span>
+            <button
+              type="button"
+              onClick={() => setStatusMessage({ text: '', type: 'info' })}
+              className="resume-status-close"
+            >
+              ×
+            </button>
           </div>
         )}
 
         {savedToFirestore && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1b5e20' }}>
+          <div className="resume-firestore-badge">
             <span>🔥</span>
-            <span>Profile successfully synced to your Firebase user account.</span>
+            <span>
+              Profile active in Firebase Firestore
+              {lastSavedTimestamp && ` (Last updated: ${new Date(lastSavedTimestamp).toLocaleTimeString()})`}
+            </span>
           </div>
         )}
       </div>
 
       {/* PDF Document Preview (if active) */}
       {previewUrl && (
-        <div
-          style={{
-            marginBottom: '2rem',
-            border: '1px solid #dcdfe3',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            backgroundColor: '#ffffff',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '10px 16px',
-              backgroundColor: '#f7f8f9',
-              borderBottom: '1px solid #e4e6e8',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="resume-preview-card">
+          <div className="resume-preview-header">
+            <div className="resume-preview-file-info">
               <span>📄</span>
               <strong>{uploadedFileInfo?.name || 'Resume Document'}</strong>
-              <small style={{ color: '#666' }}>({formatFileSize(uploadedFileInfo?.size)})</small>
+              <small className="resume-text-muted">({formatFileSize(uploadedFileInfo?.size)})</small>
             </div>
-            <span
-              style={{
-                backgroundColor: '#e8f5e9',
-                color: '#2e7d32',
-                fontSize: '12px',
-                padding: '3px 8px',
-                borderRadius: '4px',
-                fontWeight: 'bold',
-              }}
-            >
+            <span className="resume-preview-tag">
               ✓ PDF Loaded
             </span>
           </div>
 
-          <div style={{ width: '100%', height: '500px', backgroundColor: '#525659' }}>
+          <div className="resume-preview-frame-container">
             <iframe
               src={`${previewUrl}#toolbar=1&navpanes=0&scrollbar=1`}
               title="Resume Preview"
-              width="100%"
-              height="100%"
-              style={{ border: 'none', display: 'block' }}
+              className="resume-preview-frame"
             />
           </div>
         </div>
       )}
 
-      {/* Parsed Profile Section */}
+      {/* Parsed & Editable Profile Section */}
       {parsedProfile && (
-        <div
-          style={{
-            border: '1px solid #e0e0e0',
-            borderRadius: '8px',
-            backgroundColor: '#ffffff',
-            overflow: 'hidden',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-            marginBottom: '2rem',
-          }}
-        >
-          {/* Header Bar */}
-          <div
-            style={{
-              padding: '16px 20px',
-              backgroundColor: '#fafbfc',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '10px',
-            }}
-          >
+        <div className="resume-profile-card">
+          {/* Main Action Bar & Firebase Direct Sync Header */}
+          <div className="resume-profile-header">
             <div>
-              <h3 style={{ margin: 0, color: '#1a202c' }}>
-                Parsed Candidate Profile: {parsedProfile.personalInfo?.fullName || 'Extracted Profile'}
-              </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>
-                Structured categories parsed from your resume and saved in Firebase.
+              <div className="resume-profile-title-row">
+                <h3 className="resume-profile-title">
+                  {parsedProfile.personalInfo?.fullName || 'Candidate Profile'}
+                </h3>
+                {isDirty ? (
+                  <span className="resume-badge-unsaved">
+                    ● Unsaved Changes (Save to update Firebase)
+                  </span>
+                ) : (
+                  <span className="resume-badge-synced">
+                    ✓ Synced with Firebase
+                  </span>
+                )}
+              </div>
+              <p className="resume-profile-subtitle">
+                Manually edit, add, or remove fields below. Click <strong>"Save Changes to Firebase"</strong> to
+                directly persist modifications in your Firebase user document.
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            {/* Direct Firebase Persistence Controls */}
+            <div className="resume-profile-actions">
+              <label className="resume-autosync-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoSync}
+                  onChange={(e) => setAutoSync(e.target.checked)}
+                />
+                Auto-sync on edit
+              </label>
+
+              {isDirty && (
+                <button
+                  type="button"
+                  onClick={handleDiscardChanges}
+                  className="resume-btn-discard"
+                >
+                  ↺ Discard
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={handleDownloadJson}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#2e7d32',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
+                onClick={() => handleSaveToFirebase()}
+                disabled={isSaving || (!isDirty && savedToFirestore)}
+                className={`resume-btn resume-btn-save ${isDirty ? 'is-dirty' : 'is-synced'}`}
               >
-                ⬇ Download JSON
+                {isSaving ? 'Saving to Firebase...' : '💾 Save Changes to Firebase'}
               </button>
+
               <button
                 type="button"
-                onClick={() => setShowRawJson(!showRawJson)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#edf2f7',
-                  color: '#2d3748',
-                  border: '1px solid #cbd5e0',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`resume-btn-mode-toggle ${isEditMode ? 'is-edit' : 'is-view'}`}
               >
-                {showRawJson ? 'Hide Raw JSON' : '{ } View Raw JSON'}
+                {isEditMode ? '👁️ Switch to View' : '✏️ Switch to Edit'}
               </button>
             </div>
           </div>
 
           {/* Navigation Tabs */}
-          <div
-            style={{
-              display: 'flex',
-              borderBottom: '1px solid #e2e8f0',
-              backgroundColor: '#f8fafc',
-              overflowX: 'auto',
-            }}
-          >
+          <div className="resume-tabs-bar">
             {[
-              { id: 'overview', label: 'Overview & Info' },
-              { id: 'experience', label: `Experience (${parsedProfile.workExperience?.length || 0})` },
-              { id: 'education', label: `Education (${parsedProfile.education?.length || 0})` },
-              { id: 'skills', label: `Skills (${parsedProfile.skills?.all?.length || 0})` },
-              { id: 'projects', label: `Projects (${parsedProfile.projects?.length || 0})` },
-              { id: 'activities', label: `Extracurriculars (${parsedProfile.extracurriculars?.length || 0})` },
-              { id: 'volunteer', label: `Volunteer (${parsedProfile.volunteerExperience?.length || 0})` },
-              { id: 'certifications', label: `Certifications (${parsedProfile.certifications?.length || 0})` },
+              { id: 'overview', label: '👤 Personal Info' },
+              { id: 'experience', label: `💼 Experience (${parsedProfile.workExperience?.length || 0})` },
+              { id: 'education', label: `🎓 Education (${parsedProfile.education?.length || 0})` },
+              { id: 'skills', label: `⚡ Skills (${parsedProfile.skills?.all?.length || 0})` },
+              { id: 'projects', label: `🚀 Projects (${parsedProfile.projects?.length || 0})` },
+              { id: 'activities', label: `🏆 Activities (${parsedProfile.extracurriculars?.length || 0})` },
+              { id: 'volunteer', label: `🤝 Volunteer (${parsedProfile.volunteerExperience?.length || 0})` },
+              { id: 'certifications', label: `📜 Certifications (${parsedProfile.certifications?.length || 0})` },
+              { id: 'rawjson', label: '{ } Raw JSON Editor' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderBottom: activeTab === tab.id ? '3px solid #0066cc' : '3px solid transparent',
-                  backgroundColor: activeTab === tab.id ? '#ffffff' : 'transparent',
-                  color: activeTab === tab.id ? '#0066cc' : '#4a5568',
-                  fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  fontSize: '13px',
-                }}
+                className={`resume-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
               >
                 {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Tab Content */}
-          <div style={{ padding: '20px' }}>
-            {/* Tab: Overview & Personal Info */}
+          {/* Tab Content Area */}
+          <div className="resume-tab-body">
+            {/* TAB: Personal Information */}
             {activeTab === 'overview' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>👤 Personal Information</h4>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                    gap: '12px',
-                    marginBottom: '1.5rem',
-                  }}
-                >
-                  <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
-                    <small style={{ color: '#718096' }}>Full Name</small>
-                    <div style={{ fontWeight: '600' }}>{parsedProfile.personalInfo?.fullName || 'Not detected'}</div>
-                  </div>
-                  <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
-                    <small style={{ color: '#718096' }}>Email</small>
-                    <div style={{ fontWeight: '600' }}>{parsedProfile.personalInfo?.email || 'Not detected'}</div>
-                  </div>
-                  <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
-                    <small style={{ color: '#718096' }}>Phone</small>
-                    <div style={{ fontWeight: '600' }}>{parsedProfile.personalInfo?.phone || 'Not detected'}</div>
-                  </div>
-                  <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
-                    <small style={{ color: '#718096' }}>Location</small>
-                    <div style={{ fontWeight: '600' }}>{parsedProfile.personalInfo?.location || 'Not detected'}</div>
-                  </div>
-                  <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
-                    <small style={{ color: '#718096' }}>LinkedIn</small>
-                    <div>
-                      {parsedProfile.personalInfo?.linkedin ? (
-                        <a href={parsedProfile.personalInfo.linkedin} target="_blank" rel="noopener noreferrer">
-                          {parsedProfile.personalInfo.linkedin}
-                        </a>
-                      ) : (
-                        'Not detected'
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
-                    <small style={{ color: '#718096' }}>GitHub</small>
-                    <div>
-                      {parsedProfile.personalInfo?.github ? (
-                        <a href={parsedProfile.personalInfo.github} target="_blank" rel="noopener noreferrer">
-                          {parsedProfile.personalInfo.github}
-                        </a>
-                      ) : (
-                        'Not detected'
-                      )}
-                    </div>
-                  </div>
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>👤 Personal & Contact Information</h4>
+                  <small className="resume-section-hint">
+                    {isEditMode ? 'Modify fields to update your identity' : 'Preview view'}
+                  </small>
                 </div>
 
-                {parsedProfile.personalInfo?.summary && (
+                {isEditMode ? (
+                  <div className="resume-form-col-gap">
+                    <div className="resume-form-grid-wide">
+                      <div>
+                        <label className="resume-label">Full Name</label>
+                        <input
+                          type="text"
+                          value={parsedProfile.personalInfo?.fullName || ''}
+                          onChange={(e) => handlePersonalInfoChange('fullName', e.target.value)}
+                          placeholder="e.g. Alex Mercer"
+                          className="resume-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="resume-label">Email Address</label>
+                        <input
+                          type="email"
+                          value={parsedProfile.personalInfo?.email || ''}
+                          onChange={(e) => handlePersonalInfoChange('email', e.target.value)}
+                          placeholder="e.g. alex@example.com"
+                          className="resume-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="resume-label">Phone Number</label>
+                        <input
+                          type="text"
+                          value={parsedProfile.personalInfo?.phone || ''}
+                          onChange={(e) => handlePersonalInfoChange('phone', e.target.value)}
+                          placeholder="e.g. (514) 123-4567"
+                          className="resume-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="resume-label">Location</label>
+                        <input
+                          type="text"
+                          value={parsedProfile.personalInfo?.location || ''}
+                          onChange={(e) => handlePersonalInfoChange('location', e.target.value)}
+                          placeholder="e.g. Montreal, QC, Canada"
+                          className="resume-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="resume-label">LinkedIn Profile URL</label>
+                        <input
+                          type="text"
+                          value={parsedProfile.personalInfo?.linkedin || ''}
+                          onChange={(e) => handlePersonalInfoChange('linkedin', e.target.value)}
+                          placeholder="https://linkedin.com/in/..."
+                          className="resume-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="resume-label">GitHub Profile URL</label>
+                        <input
+                          type="text"
+                          value={parsedProfile.personalInfo?.github || ''}
+                          onChange={(e) => handlePersonalInfoChange('github', e.target.value)}
+                          placeholder="https://github.com/..."
+                          className="resume-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="resume-label">Website / Portfolio</label>
+                        <input
+                          type="text"
+                          value={parsedProfile.personalInfo?.website || ''}
+                          onChange={(e) => handlePersonalInfoChange('website', e.target.value)}
+                          placeholder="https://..."
+                          className="resume-input"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="resume-label">Professional Summary / Objective</label>
+                      <textarea
+                        value={parsedProfile.personalInfo?.summary || ''}
+                        onChange={(e) => handlePersonalInfoChange('summary', e.target.value)}
+                        placeholder="Write a concise professional summary..."
+                        rows={4}
+                        className="resume-textarea"
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <div>
-                    <h4>📝 Professional Summary</h4>
-                    <p
-                      style={{
-                        padding: '12px',
-                        backgroundColor: '#f7fafc',
-                        borderLeft: '4px solid #0066cc',
-                        borderRadius: '4px',
-                        lineHeight: '1.6',
-                        color: '#2d3748',
-                      }}
-                    >
-                      {parsedProfile.personalInfo.summary}
-                    </p>
+                    <div className="resume-view-grid">
+                      <div className="resume-view-card-item">
+                        <small className="resume-view-card-label">Full Name</small>
+                        <div className="resume-view-card-value">{parsedProfile.personalInfo?.fullName || 'Not provided'}</div>
+                      </div>
+                      <div className="resume-view-card-item">
+                        <small className="resume-view-card-label">Email</small>
+                        <div className="resume-view-card-value">{parsedProfile.personalInfo?.email || 'Not provided'}</div>
+                      </div>
+                      <div className="resume-view-card-item">
+                        <small className="resume-view-card-label">Phone</small>
+                        <div className="resume-view-card-value">{parsedProfile.personalInfo?.phone || 'Not provided'}</div>
+                      </div>
+                      <div className="resume-view-card-item">
+                        <small className="resume-view-card-label">Location</small>
+                        <div className="resume-view-card-value">{parsedProfile.personalInfo?.location || 'Not provided'}</div>
+                      </div>
+                      <div className="resume-view-card-item">
+                        <small className="resume-view-card-label">LinkedIn</small>
+                        <div>
+                          {parsedProfile.personalInfo?.linkedin ? (
+                            <a href={parsedProfile.personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="resume-link">
+                              {parsedProfile.personalInfo.linkedin}
+                            </a>
+                          ) : (
+                            'Not provided'
+                          )}
+                        </div>
+                      </div>
+                      <div className="resume-view-card-item">
+                        <small className="resume-view-card-label">GitHub</small>
+                        <div>
+                          {parsedProfile.personalInfo?.github ? (
+                            <a href={parsedProfile.personalInfo.github} target="_blank" rel="noopener noreferrer" className="resume-link">
+                              {parsedProfile.personalInfo.github}
+                            </a>
+                          ) : (
+                            'Not provided'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {parsedProfile.personalInfo?.summary && (
+                      <div>
+                        <h4>Professional Summary</h4>
+                        <p className="resume-summary-box">
+                          {parsedProfile.personalInfo.summary}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Tab: Work Experience */}
+            {/* TAB: Work Experience */}
             {activeTab === 'experience' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>💼 Work Experience</h4>
-                {parsedProfile.workExperience?.length === 0 ? (
-                  <p style={{ color: '#718096' }}>No work experience entries detected.</p>
-                ) : (
-                  parsedProfile.workExperience?.map((exp, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        marginBottom: '12px',
-                        backgroundColor: '#ffffff',
-                      }}
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>💼 Work Experience Entries</h4>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddExperience}
+                      className="resume-btn-add"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <strong style={{ fontSize: '15px', color: '#1a202c' }}>{exp.title}</strong>
-                        <span style={{ fontSize: '13px', color: '#718096' }}>{exp.dates}</span>
+                      ➕ Add Work Experience
+                    </button>
+                  )}
+                </div>
+
+                {parsedProfile.workExperience?.length === 0 ? (
+                  <div className="resume-empty-state">
+                    <p className="resume-empty-text">No work experience entries yet.</p>
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddExperience}
+                        className="resume-btn-add"
+                        style={{ marginTop: '10px' }}
+                      >
+                        ➕ Add First Experience
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  parsedProfile.workExperience?.map((exp, expIdx) => (
+                    <div key={expIdx} className="resume-card">
+                      <div className="resume-card-header">
+                        <strong className="resume-card-title">
+                          #{expIdx + 1} {exp.title || 'Untitled Role'} {exp.company && `at ${exp.company}`}
+                        </strong>
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExperience(expIdx)}
+                            className="resume-btn-delete"
+                          >
+                            🗑️ Delete Entry
+                          </button>
+                        )}
                       </div>
-                      {exp.company && (
-                        <div style={{ color: '#4a5568', fontWeight: '500', marginTop: '2px' }}>
-                          {exp.company} {exp.location && `· ${exp.location}`}
+
+                      {isEditMode ? (
+                        <div>
+                          <div className="resume-form-grid">
+                            <div>
+                              <label className="resume-label">Job Title</label>
+                              <input
+                                type="text"
+                                value={exp.title || ''}
+                                onChange={(e) => handleUpdateExperience(expIdx, 'title', e.target.value)}
+                                placeholder="e.g. Software Engineer"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Company Name</label>
+                              <input
+                                type="text"
+                                value={exp.company || ''}
+                                onChange={(e) => handleUpdateExperience(expIdx, 'company', e.target.value)}
+                                placeholder="e.g. Google"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Location</label>
+                              <input
+                                type="text"
+                                value={exp.location || ''}
+                                onChange={(e) => handleUpdateExperience(expIdx, 'location', e.target.value)}
+                                placeholder="e.g. Remote / Montreal, QC"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Dates / Duration</label>
+                              <input
+                                type="text"
+                                value={exp.dates || ''}
+                                onChange={(e) => handleUpdateExperience(expIdx, 'dates', e.target.value)}
+                                placeholder="e.g. May 2022 - Present"
+                                className="resume-input"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Bullet Points */}
+                          <div className="resume-bullets-section">
+                            <div className="resume-bullets-header">
+                              <label className="resume-label" style={{ margin: 0 }}>Bullet Points & Responsibilities</label>
+                              <button
+                                type="button"
+                                onClick={() => handleAddExperienceBullet(expIdx)}
+                                className="resume-btn-add-bullet"
+                              >
+                                ➕ Add Bullet
+                              </button>
+                            </div>
+
+                            {(!exp.bullets || exp.bullets.length === 0) && (
+                              <p className="resume-empty-bullets">
+                                No bullet points added. Click "+ Add Bullet" to add one.
+                              </p>
+                            )}
+
+                            {exp.bullets?.map((b, bIdx) => (
+                              <div
+                                key={bIdx}
+                                className="resume-bullet-row"
+                              >
+                                <span className="resume-bullet-dot">•</span>
+                                <input
+                                  type="text"
+                                  value={b}
+                                  onChange={(e) => handleUpdateExperienceBullet(expIdx, bIdx, e.target.value)}
+                                  placeholder="Describe achievement or responsibility..."
+                                  className="resume-input resume-input-no-margin"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveExperienceBullet(expIdx, bIdx)}
+                                  className="resume-btn-remove-bullet"
+                                  title="Remove bullet"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      )}
-                      {exp.bullets?.length > 0 && (
-                        <ul style={{ margin: '8px 0 0 16px', padding: 0, color: '#4a5568', lineHeight: '1.5' }}>
-                          {exp.bullets.map((b, bIdx) => (
-                            <li key={bIdx} style={{ marginBottom: '4px' }}>
-                              {b}
-                            </li>
-                          ))}
-                        </ul>
+                      ) : (
+                        <div>
+                          <div className="resume-flex-between-wrap">
+                            <strong style={{ fontSize: '15px', color: '#1a202c' }}>{exp.title}</strong>
+                            <span style={{ fontSize: '13px', color: '#718096' }}>{exp.dates}</span>
+                          </div>
+                          {exp.company && (
+                            <div className="resume-company-location">
+                              {exp.company} {exp.location && `· ${exp.location}`}
+                            </div>
+                          )}
+                          {exp.bullets?.length > 0 && (
+                            <ul className="resume-view-bullet-list">
+                              {exp.bullets.map((b, bIdx) => (
+                                <li key={bIdx} className="resume-view-bullet-item">
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))
@@ -615,31 +1305,109 @@ function ResumeUpload() {
               </div>
             )}
 
-            {/* Tab: Education */}
+            {/* TAB: Education */}
             {activeTab === 'education' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>🎓 Education</h4>
-                {parsedProfile.education?.length === 0 ? (
-                  <p style={{ color: '#718096' }}>No education entries detected.</p>
-                ) : (
-                  parsedProfile.education?.map((edu, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        marginBottom: '12px',
-                      }}
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>🎓 Education Entries</h4>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddEducation}
+                      className="resume-btn-add"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <strong style={{ fontSize: '15px' }}>{edu.institution || 'University / College'}</strong>
-                        <span style={{ fontSize: '13px', color: '#718096' }}>{edu.dates}</span>
+                      ➕ Add Education
+                    </button>
+                  )}
+                </div>
+
+                {parsedProfile.education?.length === 0 ? (
+                  <div className="resume-empty-state">
+                    <p className="resume-empty-text">No education entries detected.</p>
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddEducation}
+                        className="resume-btn-add"
+                        style={{ marginTop: '10px' }}
+                      >
+                        ➕ Add First Education
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  parsedProfile.education?.map((edu, eduIdx) => (
+                    <div key={eduIdx} className="resume-card">
+                      <div className="resume-card-header">
+                        <strong className="resume-card-title">
+                          #{eduIdx + 1} {edu.institution || 'University / College'}
+                        </strong>
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEducation(eduIdx)}
+                            className="resume-btn-delete"
+                          >
+                            🗑️ Delete Entry
+                          </button>
+                        )}
                       </div>
-                      {edu.degree && <div style={{ color: '#2b6cb0', marginTop: '4px' }}>{edu.degree}</div>}
-                      {edu.gpa && (
-                        <div style={{ fontSize: '13px', color: '#4a5568', marginTop: '4px' }}>
-                          <strong>GPA:</strong> {edu.gpa}
+
+                      {isEditMode ? (
+                        <div className="resume-form-grid">
+                          <div>
+                            <label className="resume-label">Institution / University</label>
+                            <input
+                              type="text"
+                              value={edu.institution || ''}
+                              onChange={(e) => handleUpdateEducation(eduIdx, 'institution', e.target.value)}
+                              placeholder="e.g. Concordia University"
+                              className="resume-input"
+                            />
+                          </div>
+                          <div>
+                            <label className="resume-label">Degree / Field of Study</label>
+                            <input
+                              type="text"
+                              value={edu.degree || ''}
+                              onChange={(e) => handleUpdateEducation(eduIdx, 'degree', e.target.value)}
+                              placeholder="e.g. B.Eng. in Software Engineering"
+                              className="resume-input"
+                            />
+                          </div>
+                          <div>
+                            <label className="resume-label">Dates / Graduation Year</label>
+                            <input
+                              type="text"
+                              value={edu.dates || ''}
+                              onChange={(e) => handleUpdateEducation(eduIdx, 'dates', e.target.value)}
+                              placeholder="e.g. 2020 - 2024"
+                              className="resume-input"
+                            />
+                          </div>
+                          <div>
+                            <label className="resume-label">GPA (optional)</label>
+                            <input
+                              type="text"
+                              value={edu.gpa || ''}
+                              onChange={(e) => handleUpdateEducation(eduIdx, 'gpa', e.target.value)}
+                              placeholder="e.g. 3.8 / 4.0"
+                              className="resume-input"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="resume-flex-between-wrap">
+                            <strong style={{ fontSize: '15px' }}>{edu.institution}</strong>
+                            <span style={{ fontSize: '13px', color: '#718096' }}>{edu.dates}</span>
+                          </div>
+                          {edu.degree && <div style={{ color: '#2b6cb0', marginTop: '4px' }}>{edu.degree}</div>}
+                          {edu.gpa && (
+                            <div style={{ fontSize: '13px', color: '#4a5568', marginTop: '4px' }}>
+                              <strong>GPA:</strong> {edu.gpa}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -648,136 +1416,384 @@ function ResumeUpload() {
               </div>
             )}
 
-            {/* Tab: Skills */}
+            {/* TAB: Skills */}
             {activeTab === 'skills' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>⚡ Skills & Competencies</h4>
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>⚡ Skills & Technologies</h4>
+                  <small className="resume-section-hint">
+                    {isEditMode ? 'Click × on any skill to remove, or use the inputs to add new ones' : 'View only'}
+                  </small>
+                </div>
 
-                {parsedProfile.skills?.categories?.languages?.length > 0 && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <strong style={{ fontSize: '14px', color: '#2d3748' }}>Programming Languages</strong>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                      {parsedProfile.skills.categories.languages.map((skill, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            padding: '4px 10px',
-                            backgroundColor: '#e6fffa',
-                            color: '#234e52',
-                            borderRadius: '16px',
-                            fontSize: '13px',
-                            border: '1px solid #b2f5ea',
-                          }}
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {parsedProfile.skills?.categories?.frameworksAndTools?.length > 0 && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <strong style={{ fontSize: '14px', color: '#2d3748' }}>Frameworks & Tools</strong>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                      {parsedProfile.skills.categories.frameworksAndTools.map((skill, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            padding: '4px 10px',
-                            backgroundColor: '#ebf8ff',
-                            color: '#2b6cb0',
-                            borderRadius: '16px',
-                            fontSize: '13px',
-                            border: '1px solid #bee3f8',
-                          }}
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <strong style={{ fontSize: '14px', color: '#2d3748' }}>All Detected Skills</strong>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                    {parsedProfile.skills?.all?.map((skill, idx) => (
+                {/* Programming Languages */}
+                <div className="resume-card">
+                  <strong className="resume-card-title">Programming Languages</strong>
+                  <div className="resume-badge-group">
+                    {parsedProfile.skills?.categories?.languages?.map((skill, idx) => (
                       <span
                         key={idx}
-                        style={{
-                          padding: '4px 10px',
-                          backgroundColor: '#f7fafc',
-                          color: '#4a5568',
-                          borderRadius: '16px',
-                          fontSize: '13px',
-                          border: '1px solid #e2e8f0',
-                        }}
+                        className="resume-skill-badge badge-teal"
                       >
                         {skill}
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill('languages', skill)}
+                            className="resume-skill-remove"
+                          >
+                            ×
+                          </button>
+                        )}
                       </span>
                     ))}
                   </div>
+
+                  {isEditMode && (
+                    <div className="resume-skill-input-row">
+                      <input
+                        type="text"
+                        value={newLanguageInput}
+                        onChange={(e) => setNewLanguageInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddSkill('languages', newLanguageInput);
+                            setNewLanguageInput('');
+                          }
+                        }}
+                        placeholder="Add programming language (e.g. Rust, Go)..."
+                        className="resume-input resume-skill-input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleAddSkill('languages', newLanguageInput);
+                          setNewLanguageInput('');
+                        }}
+                        className="resume-skill-add-btn btn-teal"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Frameworks & Tools */}
+                <div className="resume-card">
+                  <strong className="resume-card-title">Frameworks, Libraries & Databases</strong>
+                  <div className="resume-badge-group">
+                    {parsedProfile.skills?.categories?.frameworksAndTools?.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="resume-skill-badge badge-blue"
+                      >
+                        {skill}
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill('frameworksAndTools', skill)}
+                            className="resume-skill-remove"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  {isEditMode && (
+                    <div className="resume-skill-input-row">
+                      <input
+                        type="text"
+                        value={newToolInput}
+                        onChange={(e) => setNewToolInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddSkill('frameworksAndTools', newToolInput);
+                            setNewToolInput('');
+                          }
+                        }}
+                        placeholder="Add framework or tool (e.g. Next.js, Docker)..."
+                        className="resume-input resume-skill-input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleAddSkill('frameworksAndTools', newToolInput);
+                          setNewToolInput('');
+                        }}
+                        className="resume-skill-add-btn btn-blue"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Other Skills & Total Competencies */}
+                <div className="resume-card">
+                  <strong className="resume-card-title">All Detected Competencies & Skills</strong>
+                  <div className="resume-badge-group">
+                    {parsedProfile.skills?.all?.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="resume-skill-badge badge-gray"
+                      >
+                        {skill}
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkillFromAll(skill)}
+                            className="resume-skill-remove"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  {isEditMode && (
+                    <div className="resume-skill-input-row">
+                      <input
+                        type="text"
+                        value={newOtherSkillInput}
+                        onChange={(e) => setNewOtherSkillInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddSkill('other', newOtherSkillInput);
+                            setNewOtherSkillInput('');
+                          }
+                        }}
+                        placeholder="Add other skill (e.g. CI/CD, Agile, System Design)..."
+                        className="resume-input resume-skill-input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleAddSkill('other', newOtherSkillInput);
+                          setNewOtherSkillInput('');
+                        }}
+                        className="resume-skill-add-btn btn-gray"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Tab: Projects */}
+            {/* TAB: Projects */}
             {activeTab === 'projects' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>🚀 Projects</h4>
-                {parsedProfile.projects?.length === 0 ? (
-                  <p style={{ color: '#718096' }}>No projects detected.</p>
-                ) : (
-                  parsedProfile.projects?.map((proj, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        marginBottom: '12px',
-                      }}
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>🚀 Projects</h4>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddProject}
+                      className="resume-btn-add"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ fontSize: '15px' }}>{proj.name}</strong>
-                        {proj.link && (
-                          <a
-                            href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ fontSize: '13px' }}
+                      ➕ Add Project
+                    </button>
+                  )}
+                </div>
+
+                {parsedProfile.projects?.length === 0 ? (
+                  <div className="resume-empty-state">
+                    <p className="resume-empty-text">No projects detected.</p>
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddProject}
+                        className="resume-btn-add"
+                        style={{ marginTop: '10px' }}
+                      >
+                        ➕ Add First Project
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  parsedProfile.projects?.map((proj, projIdx) => (
+                    <div key={projIdx} className="resume-card">
+                      <div className="resume-card-header">
+                        <strong className="resume-card-title">
+                          #{projIdx + 1} {proj.name || 'Untitled Project'}
+                        </strong>
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProject(projIdx)}
+                            className="resume-btn-delete"
                           >
-                            View Project
-                          </a>
+                            🗑️ Delete Entry
+                          </button>
                         )}
                       </div>
-                      {proj.techStack?.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '6px 0' }}>
-                          {proj.techStack.map((tech, tIdx) => (
-                            <span
-                              key={tIdx}
-                              style={{
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                backgroundColor: '#edf2f7',
-                                color: '#4a5568',
-                                borderRadius: '10px',
-                              }}
-                            >
-                              {tech}
-                            </span>
-                          ))}
+
+                      {isEditMode ? (
+                        <div>
+                          <div className="resume-form-grid">
+                            <div>
+                              <label className="resume-label">Project Name</label>
+                              <input
+                                type="text"
+                                value={proj.name || ''}
+                                onChange={(e) => handleUpdateProject(projIdx, 'name', e.target.value)}
+                                placeholder="e.g. CareerConnect"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Project Link / Repo URL</label>
+                              <input
+                                type="text"
+                                value={proj.link || ''}
+                                onChange={(e) => handleUpdateProject(projIdx, 'link', e.target.value)}
+                                placeholder="https://github.com/..."
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Dates (optional)</label>
+                              <input
+                                type="text"
+                                value={proj.dates || ''}
+                                onChange={(e) => handleUpdateProject(projIdx, 'dates', e.target.value)}
+                                placeholder="e.g. Fall 2023"
+                                className="resume-input"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Tech Stack Tags */}
+                          <div style={{ marginTop: '10px' }}>
+                            <label className="resume-label">Technologies Used</label>
+                            <div className="resume-project-tags">
+                              {proj.techStack?.map((t, tIdx) => (
+                                <span
+                                  key={tIdx}
+                                  className="resume-project-tag"
+                                >
+                                  {t}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveProjectTech(projIdx, t)}
+                                    className="resume-tag-remove"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="resume-project-tag-input-row">
+                              <input
+                                type="text"
+                                value={newProjectTech[projIdx] || ''}
+                                onChange={(e) =>
+                                  setNewProjectTech({ ...newProjectTech, [projIdx]: e.target.value })
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddProjectTech(projIdx, newProjectTech[projIdx] || '');
+                                    setNewProjectTech({ ...newProjectTech, [projIdx]: '' });
+                                  }
+                                }}
+                                placeholder="Add tech tag (e.g. React, Docker)..."
+                                className="resume-input resume-project-tag-input"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleAddProjectTech(projIdx, newProjectTech[projIdx] || '');
+                                  setNewProjectTech({ ...newProjectTech, [projIdx]: '' });
+                                }}
+                                className="resume-project-tag-btn"
+                              >
+                                + Tag
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Bullet Points */}
+                          <div className="resume-bullets-section">
+                            <div className="resume-bullets-header">
+                              <label className="resume-label" style={{ margin: 0 }}>Key Features & Achievements</label>
+                              <button
+                                type="button"
+                                onClick={() => handleAddProjectBullet(projIdx)}
+                                className="resume-btn-add-bullet"
+                              >
+                                ➕ Add Bullet
+                              </button>
+                            </div>
+
+                            {proj.bullets?.map((b, bIdx) => (
+                              <div
+                                key={bIdx}
+                                className="resume-bullet-row"
+                              >
+                                <span className="resume-bullet-dot">•</span>
+                                <input
+                                  type="text"
+                                  value={b}
+                                  onChange={(e) => handleUpdateProjectBullet(projIdx, bIdx, e.target.value)}
+                                  placeholder="Describe project details..."
+                                  className="resume-input resume-input-no-margin"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveProjectBullet(projIdx, bIdx)}
+                                  className="resume-btn-remove-bullet"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      )}
-                      {proj.bullets?.length > 0 && (
-                        <ul style={{ margin: '8px 0 0 16px', padding: 0, color: '#4a5568', lineHeight: '1.5' }}>
-                          {proj.bullets.map((b, bIdx) => (
-                            <li key={bIdx} style={{ marginBottom: '4px' }}>
-                              {b}
-                            </li>
-                          ))}
-                        </ul>
+                      ) : (
+                        <div>
+                          <div className="resume-flex-between">
+                            <strong style={{ fontSize: '15px' }}>{proj.name}</strong>
+                            {proj.link && (
+                              <a
+                                href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="resume-link"
+                              >
+                                View Project
+                              </a>
+                            )}
+                          </div>
+                          {proj.techStack?.length > 0 && (
+                            <div className="resume-project-tags">
+                              {proj.techStack.map((tech, tIdx) => (
+                                <span
+                                  key={tIdx}
+                                  className="resume-project-tag"
+                                >
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {proj.bullets?.length > 0 && (
+                            <ul className="resume-view-bullet-list">
+                              {proj.bullets.map((b, bIdx) => (
+                                <li key={bIdx} className="resume-view-bullet-item">
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))
@@ -785,36 +1801,120 @@ function ResumeUpload() {
               </div>
             )}
 
-            {/* Tab: Extracurricular Activities */}
+            {/* TAB: Extracurricular Activities */}
             {activeTab === 'activities' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>🏆 Extracurricular Activities</h4>
-                {parsedProfile.extracurriculars?.length === 0 ? (
-                  <p style={{ color: '#718096' }}>No extracurricular activities detected.</p>
-                ) : (
-                  parsedProfile.extracurriculars?.map((act, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        marginBottom: '12px',
-                      }}
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>🏆 Extracurricular Activities</h4>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddExtracurricular}
+                      className="resume-btn-add"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <strong style={{ fontSize: '15px' }}>{act.title}</strong>
-                        <span style={{ fontSize: '13px', color: '#718096' }}>{act.dates}</span>
+                      ➕ Add Activity
+                    </button>
+                  )}
+                </div>
+
+                {parsedProfile.extracurriculars?.length === 0 ? (
+                  <div className="resume-empty-state">
+                    <p className="resume-empty-text">No extracurricular activities detected.</p>
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddExtracurricular}
+                        className="resume-btn-add"
+                        style={{ marginTop: '10px' }}
+                      >
+                        ➕ Add First Activity
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  parsedProfile.extracurriculars?.map((act, actIdx) => (
+                    <div key={actIdx} className="resume-card">
+                      <div className="resume-card-header">
+                        <strong className="resume-card-title">
+                          #{actIdx + 1} {act.title || 'Activity'}
+                        </strong>
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExtracurricular(actIdx)}
+                            className="resume-btn-delete"
+                          >
+                            🗑️ Delete Entry
+                          </button>
+                        )}
                       </div>
-                      {act.organization && (
-                        <div style={{ color: '#4a5568', fontWeight: '500', marginTop: '2px' }}>
-                          {act.organization}
+
+                      {isEditMode ? (
+                        <div className="resume-form-col-gap-sm">
+                          <div className="resume-form-grid">
+                            <div>
+                              <label className="resume-label">Role / Title</label>
+                              <input
+                                type="text"
+                                value={act.title || ''}
+                                onChange={(e) => handleUpdateExtracurricular(actIdx, 'title', e.target.value)}
+                                placeholder="e.g. President / Member"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Organization / Club</label>
+                              <input
+                                type="text"
+                                value={act.organization || ''}
+                                onChange={(e) =>
+                                  handleUpdateExtracurricular(actIdx, 'organization', e.target.value)
+                                }
+                                placeholder="e.g. Engineering Student Society"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Dates</label>
+                              <input
+                                type="text"
+                                value={act.dates || ''}
+                                onChange={(e) => handleUpdateExtracurricular(actIdx, 'dates', e.target.value)}
+                                placeholder="e.g. 2022 - 2023"
+                                className="resume-input"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="resume-label">Description / Highlights</label>
+                            <textarea
+                              value={act.description || ''}
+                              onChange={(e) =>
+                                handleUpdateExtracurricular(actIdx, 'description', e.target.value)
+                              }
+                              placeholder="Describe your role and activities..."
+                              rows={2}
+                              className="resume-textarea"
+                            />
+                          </div>
                         </div>
-                      )}
-                      {act.description && (
-                        <p style={{ margin: '6px 0 0 0', color: '#4a5568', lineHeight: '1.5' }}>
-                          {act.description}
-                        </p>
+                      ) : (
+                        <div>
+                          <div className="resume-flex-between-wrap">
+                            <strong style={{ fontSize: '15px' }}>{act.title}</strong>
+                            <span style={{ fontSize: '13px', color: '#718096' }}>{act.dates}</span>
+                          </div>
+                          {act.organization && (
+                            <div className="resume-company-location">
+                              {act.organization}
+                            </div>
+                          )}
+                          {act.description && (
+                            <p style={{ margin: '6px 0 0 0', color: '#4a5568', lineHeight: '1.5' }}>
+                              {act.description}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))
@@ -822,36 +1922,118 @@ function ResumeUpload() {
               </div>
             )}
 
-            {/* Tab: Volunteer Experience */}
+            {/* TAB: Volunteer Experience */}
             {activeTab === 'volunteer' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>🤝 Volunteer Experience</h4>
-                {parsedProfile.volunteerExperience?.length === 0 ? (
-                  <p style={{ color: '#718096' }}>No volunteer experience entries detected.</p>
-                ) : (
-                  parsedProfile.volunteerExperience?.map((vol, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        marginBottom: '12px',
-                      }}
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>🤝 Volunteer Experience</h4>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddVolunteer}
+                      className="resume-btn-add"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <strong style={{ fontSize: '15px' }}>{vol.role}</strong>
-                        <span style={{ fontSize: '13px', color: '#718096' }}>{vol.dates}</span>
+                      ➕ Add Volunteer Experience
+                    </button>
+                  )}
+                </div>
+
+                {parsedProfile.volunteerExperience?.length === 0 ? (
+                  <div className="resume-empty-state">
+                    <p className="resume-empty-text">No volunteer experience detected.</p>
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={handleAddVolunteer}
+                        className="resume-btn-add"
+                        style={{ marginTop: '10px' }}
+                      >
+                        ➕ Add First Volunteer Entry
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  parsedProfile.volunteerExperience?.map((vol, volIdx) => (
+                    <div key={volIdx} className="resume-card">
+                      <div className="resume-card-header">
+                        <strong className="resume-card-title">
+                          #{volIdx + 1} {vol.role || 'Volunteer'}
+                        </strong>
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVolunteer(volIdx)}
+                            className="resume-btn-delete"
+                          >
+                            🗑️ Delete Entry
+                          </button>
+                        )}
                       </div>
-                      {vol.organization && (
-                        <div style={{ color: '#4a5568', fontWeight: '500', marginTop: '2px' }}>
-                          {vol.organization}
+
+                      {isEditMode ? (
+                        <div className="resume-form-col-gap-sm">
+                          <div className="resume-form-grid">
+                            <div>
+                              <label className="resume-label">Role / Title</label>
+                              <input
+                                type="text"
+                                value={vol.role || ''}
+                                onChange={(e) => handleUpdateVolunteer(volIdx, 'role', e.target.value)}
+                                placeholder="e.g. Volunteer Mentor"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Organization</label>
+                              <input
+                                type="text"
+                                value={vol.organization || ''}
+                                onChange={(e) =>
+                                  handleUpdateVolunteer(volIdx, 'organization', e.target.value)
+                                }
+                                placeholder="e.g. Canada Learning Code"
+                                className="resume-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="resume-label">Dates</label>
+                              <input
+                                type="text"
+                                value={vol.dates || ''}
+                                onChange={(e) => handleUpdateVolunteer(volIdx, 'dates', e.target.value)}
+                                placeholder="e.g. 2021 - 2022"
+                                className="resume-input"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="resume-label">Description / Contribution</label>
+                            <textarea
+                              value={vol.description || ''}
+                              onChange={(e) => handleUpdateVolunteer(volIdx, 'description', e.target.value)}
+                              placeholder="Describe your volunteer contributions..."
+                              rows={2}
+                              className="resume-textarea"
+                            />
+                          </div>
                         </div>
-                      )}
-                      {vol.description && (
-                        <p style={{ margin: '6px 0 0 0', color: '#4a5568', lineHeight: '1.5' }}>
-                          {vol.description}
-                        </p>
+                      ) : (
+                        <div>
+                          <div className="resume-flex-between-wrap">
+                            <strong style={{ fontSize: '15px' }}>{vol.role}</strong>
+                            <span style={{ fontSize: '13px', color: '#718096' }}>{vol.dates}</span>
+                          </div>
+                          {vol.organization && (
+                            <div className="resume-company-location">
+                              {vol.organization}
+                            </div>
+                          )}
+                          {vol.description && (
+                            <p style={{ margin: '6px 0 0 0', color: '#4a5568', lineHeight: '1.5' }}>
+                              {vol.description}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))
@@ -859,90 +2041,230 @@ function ResumeUpload() {
               </div>
             )}
 
-            {/* Tab: Certifications */}
+            {/* TAB: Certifications & Additional Info */}
             {activeTab === 'certifications' && (
               <div>
-                <h4 style={{ marginTop: 0 }}>📜 Certifications & Additional Sections</h4>
+                <div className="resume-section-header">
+                  <h4 style={{ margin: 0 }}>📜 Certifications & Honors</h4>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleAddCertification}
+                      className="resume-btn-add"
+                    >
+                      ➕ Add Certification
+                    </button>
+                  )}
+                </div>
+
                 {parsedProfile.certifications?.length === 0 ? (
-                  <p style={{ color: '#718096' }}>No certifications detected.</p>
+                  <p className="resume-text-muted">No certifications detected.</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1.5rem' }}>
-                    {parsedProfile.certifications?.map((cert, idx) => (
+                  <div className="resume-cert-list">
+                    {parsedProfile.certifications?.map((cert, certIdx) => (
                       <div
-                        key={idx}
-                        style={{
-                          padding: '10px 14px',
-                          backgroundColor: '#f7fafc',
-                          borderRadius: '6px',
-                          border: '1px solid #edf2f7',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                        }}
+                        key={certIdx}
+                        className="resume-cert-item"
                       >
-                        <strong>{cert.name}</strong>
-                        <span style={{ color: '#718096', fontSize: '13px' }}>{cert.date}</span>
+                        {isEditMode ? (
+                          <div className="resume-cert-edit-row">
+                            <input
+                              type="text"
+                              value={cert.name || ''}
+                              onChange={(e) => handleUpdateCertification(certIdx, 'name', e.target.value)}
+                              placeholder="Certification or Award Name"
+                              className="resume-input resume-cert-input-wide"
+                            />
+                            <input
+                              type="text"
+                              value={cert.issuer || ''}
+                              onChange={(e) => handleUpdateCertification(certIdx, 'issuer', e.target.value)}
+                              placeholder="Issuer / Authority (e.g. AWS)"
+                              className="resume-input resume-cert-input-sm"
+                            />
+                            <input
+                              type="text"
+                              value={cert.date || ''}
+                              onChange={(e) => handleUpdateCertification(certIdx, 'date', e.target.value)}
+                              placeholder="Date (e.g. 2023)"
+                              className="resume-input resume-cert-input-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCertification(certIdx)}
+                              className="resume-btn-delete"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="resume-cert-view-row">
+                            <div>
+                              <strong>{cert.name}</strong>
+                              {cert.issuer && <span className="resume-cert-issuer">· {cert.issuer}</span>}
+                            </div>
+                            <span className="resume-cert-date">{cert.date}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {parsedProfile.additional?.languages?.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <strong>Languages Spoken:</strong>
-                    <p style={{ margin: '4px 0', color: '#4a5568' }}>
-                      {parsedProfile.additional.languages.join(', ')}
+                {/* Additional Languages Spoken */}
+                <div className="resume-card" style={{ marginTop: '1.5rem' }}>
+                  <strong className="resume-card-title">🗣️ Spoken Languages</strong>
+                  <div className="resume-badge-group">
+                    {parsedProfile.additional?.languages?.map((lang, lIdx) => (
+                      <span
+                        key={lIdx}
+                        className="resume-skill-badge badge-purple"
+                      >
+                        {lang}
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSpokenLanguage(lang)}
+                            className="resume-skill-remove"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  {isEditMode && (
+                    <div className="resume-skill-input-row">
+                      <input
+                        type="text"
+                        value={newSpokenLangInput}
+                        onChange={(e) => setNewSpokenLangInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddSpokenLanguage(newSpokenLangInput);
+                          }
+                        }}
+                        placeholder="Add spoken language (e.g. English, French)..."
+                        className="resume-input resume-skill-input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddSpokenLanguage(newSpokenLangInput)}
+                        className="resume-skill-add-btn btn-purple"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Interests / Hobbies */}
+                <div className="resume-card">
+                  <strong className="resume-card-title">🎨 Interests & Hobbies</strong>
+                  <div className="resume-badge-group">
+                    {parsedProfile.additional?.interests?.map((item, iIdx) => (
+                      <span
+                        key={iIdx}
+                        className="resume-skill-badge badge-orange"
+                      >
+                        {item}
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveInterest(item)}
+                            className="resume-skill-remove"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  {isEditMode && (
+                    <div className="resume-skill-input-row">
+                      <input
+                        type="text"
+                        value={newInterestInput}
+                        onChange={(e) => setNewInterestInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddInterest(newInterestInput);
+                          }
+                        }}
+                        placeholder="Add interest (e.g. Open Source, Photography)..."
+                        className="resume-input resume-skill-input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddInterest(newInterestInput)}
+                        className="resume-skill-add-btn btn-orange"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: Raw JSON Editor (Direct JSON modifying) */}
+            {activeTab === 'rawjson' && (
+              <div>
+                <div className="resume-json-header">
+                  <div>
+                    <h4 style={{ margin: 0 }}>{'{ }'} Direct JSON File Editor</h4>
+                    <p className="resume-profile-subtitle">
+                      Edit the raw JSON profile document directly. Changes are validated and saved straight to Firebase.
                     </p>
+                  </div>
+
+                  <div className="resume-json-actions">
+                    <button
+                      type="button"
+                      onClick={handleFormatRawJson}
+                      className="resume-btn resume-btn-light"
+                    >
+                      ✨ Format JSON
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadJson}
+                      className="resume-btn resume-btn-success"
+                    >
+                      ⬇ Download .json
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveRawJson}
+                      disabled={isSaving}
+                      className="resume-btn resume-btn-primary"
+                    >
+                      {isSaving ? 'Saving...' : '💾 Apply & Save to Firebase'}
+                    </button>
+                  </div>
+                </div>
+
+                {jsonError && (
+                  <div className="resume-json-error">
+                    ⚠️ {jsonError}
                   </div>
                 )}
 
-                {parsedProfile.additional?.interests?.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <strong>Interests / Hobbies:</strong>
-                    <p style={{ margin: '4px 0', color: '#4a5568' }}>
-                      {parsedProfile.additional.interests.join(', ')}
-                    </p>
-                  </div>
-                )}
+                <textarea
+                  value={rawJsonText}
+                  onChange={(e) => {
+                    setRawJsonText(e.target.value);
+                    setJsonError('');
+                    setIsDirty(true);
+                  }}
+                  rows={22}
+                  className="resume-json-textarea"
+                />
               </div>
             )}
           </div>
-
-          {/* Collapsible Raw JSON Viewer */}
-          {showRawJson && (
-            <div
-              style={{
-                borderTop: '1px solid #e0e0e0',
-                backgroundColor: '#1a202c',
-                color: '#e2e8f0',
-                padding: '16px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                fontSize: '12px',
-                fontFamily: 'monospace',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <strong style={{ color: '#63b3ed' }}>Raw JSON Document (Stored in Firebase Firestore):</strong>
-                <button
-                  type="button"
-                  onClick={handleDownloadJson}
-                  style={{
-                    backgroundColor: '#2e7d32',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '3px',
-                    padding: '2px 8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Download .json
-                </button>
-              </div>
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {JSON.stringify(parsedProfile, null, 2)}
-              </pre>
-            </div>
-          )}
         </div>
       )}
     </div>

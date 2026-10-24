@@ -50,6 +50,33 @@ export const fetchResumeProfile = async (token) => {
 };
 
 /**
+ * Update authenticated user's resume JSON profile directly in Firebase
+ * @param {Object} updatedJson 
+ * @param {string} token 
+ * @returns {Promise<Object>}
+ */
+export const updateResumeProfile = async (updatedJson, token) => {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}/profile`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(updatedJson),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to update resume profile in Firebase.');
+  }
+  return data;
+};
+
+/**
  * Upload a JSON format resume profile directly to the backend
  * @param {Object} jsonData 
  * @param {string} token 

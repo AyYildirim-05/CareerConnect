@@ -7,6 +7,7 @@ const {
   uploadResume,
   uploadResumeJson,
   getResumeProfile,
+  updateResumeProfile,
   downloadResumeJson
 } = require('../controllers/resumeController');
 
@@ -21,6 +22,10 @@ router.post('/upload-json', authenticateToken, uploadResumeJson);
 // GET /api/resumes/profile
 // Retrieves authenticated user's parsed JSON resume profile
 router.get('/profile', authenticateToken, getResumeProfile);
+
+// PUT /api/resumes/profile
+// Updates authenticated user's resume JSON profile directly in Firestore
+router.put('/profile', authenticateToken, updateResumeProfile);
 
 // GET /api/resumes/download
 // Downloads authenticated user's resume profile as a JSON file

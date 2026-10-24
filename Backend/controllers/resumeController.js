@@ -140,7 +140,7 @@ const uploadResumeJson = async (req, res) => {
       });
     }
 
-    await JobSeekerModel.saveResumeJson(req.user.id, resumeJson);
+    await JobSeekerModel.saveResumeJson(req.user.id, resumeJson, { isUpdate: true });
 
     return res.status(200).json({
       success: true,
@@ -158,9 +158,50 @@ const uploadResumeJson = async (req, res) => {
   }
 };
 
+/**
+ * Update authenticated user's resume JSON profile directly in Firebase
+ * Allows full manual modifications (adding, updating, removing fields)
+ */
+const updateResumeProfile = async (req, res) => {
+  try {
+    const resumeJson = req.body;
+    if (!resumeJson || typeof resumeJson !== 'object' || Object.keys(resumeJson).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid resume data. Please provide a valid profile JSON object.'
+      });
+    }
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'You must be logged in to update your resume profile.'
+      });
+    }
+
+    const updatedUser = await JobSeekerModel.saveResumeJson(req.user.id, resumeJson, { isUpdate: true });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Resume profile and JSON successfully updated and synced in Firebase!',
+      savedToProfile: true,
+      resumeJson,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating resume JSON in Firebase:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update resume profile in Firebase.',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadResume,
   uploadResumeJson,
   getResumeProfile,
+  updateResumeProfile,
   downloadResumeJson
 };
