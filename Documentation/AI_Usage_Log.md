@@ -14,3 +14,4 @@
 | Ahmet | 2026-10-20 | [Chat Transcript (Gemini)](https://share.gemini.google/Q3TjbEES4LIX) | With the help AI I fixed issues between backend and frontend communications routes. |
 | Ahmet | 2026-10-23 | [Chat Transcript (Antigravity)](AI_Log/Ahmet/Antigravity_Chat_Log_2026-10-23.md) | Extracted ResumeUpload component styling into dedicated CSS stylesheet (ResumeUpload.css), polished backend test suites, and replaced placeholder mock data with real candidate fixtures. |
 | Su | 2026-10-24 | https://claude.ai/share/64352db1-5a9c-49ec-8754-1ce05d0ffca1 | Fixed merge bugs from US-07.
+| Ahmet | 2026-10-25 | [Chat Transcript (Gemini)](https://share.gemini.google/StTutiVGH2JB) | Setup of CI pipeline.
