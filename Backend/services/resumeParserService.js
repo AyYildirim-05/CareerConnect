@@ -30,12 +30,11 @@ const KNOWN_SKILLS = [
  */
 class ResumeParserService {
   /**
-   * Parse PDF buffer into structured JSON
+   * Extract raw text and page count from a PDF buffer
    * @param {Buffer} pdfBuffer
-   * @param {Object} [meta]
-   * @returns {Promise<Object>}
+   * @returns {Promise<{ rawText: string, numPages: number }>}
    */
-  static async parsePdf(pdfBuffer, meta = {}) {
+  static async extractRawText(pdfBuffer) {
     if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer)) {
       throw new Error('Valid PDF buffer is required for parsing.');
     }
@@ -65,6 +64,79 @@ class ResumeParserService {
       console.error('PDF text extraction error:', parseError);
       throw new Error(`Failed to extract text from PDF: ${parseError.message}`);
     }
+
+    return {
+      rawText: rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\u00A0/g, ' ').trim(),
+      numPages
+    };
+  }
+
+  /**
+   * Convert a structured resume JSON profile into plain text for GenAI analysis
+   * @param {Object} profile
+   * @returns {string}
+   */
+  static profileToText(profile) {
+    if (!profile || typeof profile !== 'object') return '';
+
+    const parts = [];
+    const info = profile.personalInfo || {};
+    if (info.fullName) parts.push(`Name: ${info.fullName}`);
+    if (info.summary) parts.push(`Summary: ${info.summary}`);
+
+    if (profile.skills) {
+      const skillList = Array.isArray(profile.skills)
+        ? profile.skills
+        : [
+            ...(profile.skills.technical || []),
+            ...(profile.skills.soft || []),
+            ...(profile.skills.tools || []),
+            ...(profile.skills.all || [])
+          ];
+      if (skillList.length > 0) {
+        parts.push(`Skills: ${[...new Set(skillList)].join(', ')}`);
+      }
+    }
+
+    if (Array.isArray(profile.workExperience) && profile.workExperience.length > 0) {
+      const expLines = profile.workExperience.map(exp =>
+        `${exp.jobTitle || exp.role || ''} at ${exp.company || ''} (${exp.dates || ''}): ${exp.description || (exp.responsibilities || []).join(' ')}`
+      );
+      parts.push(`Work Experience:\n${expLines.join('\n')}`);
+    }
+
+    if (Array.isArray(profile.projects) && profile.projects.length > 0) {
+      const projLines = profile.projects.map(proj =>
+        `${proj.name || proj.title || ''} (${(proj.technologies || []).join(', ')}): ${proj.description || ''}`
+      );
+      parts.push(`Projects:\n${projLines.join('\n')}`);
+    }
+
+    if (Array.isArray(profile.education) && profile.education.length > 0) {
+      const eduLines = profile.education.map(edu =>
+        `${edu.degree || ''} - ${edu.institution || ''} (${edu.dates || edu.graduationYear || ''})`
+      );
+      parts.push(`Education:\n${eduLines.join('\n')}`);
+    }
+
+    if (Array.isArray(profile.certifications) && profile.certifications.length > 0) {
+      const certLines = profile.certifications.map(cert =>
+        typeof cert === 'string' ? cert : `${cert.name || ''} (${cert.date || ''})`
+      );
+      parts.push(`Certifications:\n${certLines.join('\n')}`);
+    }
+
+    return parts.join('\n\n').trim();
+  }
+
+  /**
+   * Parse PDF buffer into structured JSON
+   * @param {Buffer} pdfBuffer
+   * @param {Object} [meta]
+   * @returns {Promise<Object>}
+   */
+  static async parsePdf(pdfBuffer, meta = {}) {
+    const { rawText, numPages } = await this.extractRawText(pdfBuffer);
 
     return this.parseText(rawText, {
       originalFilename: meta.originalFilename || 'resume.pdf',

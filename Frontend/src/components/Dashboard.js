@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ResumeUpload from "./ResumeUpload";
+import ResumeFeedbackCard from "./ResumeFeedbackCard";
 
 export default function Dashboard() {
   const { user, company } = useAuth();
@@ -26,6 +27,7 @@ export default function Dashboard() {
           <li>Saved Favorite Jobs</li>
         </ul>
             <ResumeUpload />
+            <ResumeFeedbackCard />
       </div>
       ) : (
         <ul>

@@ -1,4 +1,5 @@
 const ResumeParserService = require('../services/resumeParserService');
+const ResumeFeedbackService = require('../services/resumeFeedbackService');
 const { JobSeekerModel } = require('../models');
 
 /**
@@ -198,10 +199,61 @@ const updateResumeProfile = async (req, res) => {
   }
 };
 
+/**
+ * Generate GenAI resume feedback (Strengths, Missing Keywords, Actionable Revisions)
+ * against a target job role. Supports an uploaded PDF, explicit resumeText/resumeProfile,
+ * or falls back to the authenticated user's saved Firestore resume profile.
+ */
+const analyzeResumeFeedback = async (req, res) => {
+  try {
+    const targetRole = req.body && req.body.targetRole;
+    let resumeText = (req.body && req.body.resumeText) || '';
+
+    // 1. If a PDF file was uploaded directly, extract its text
+    if (req.file && req.file.buffer) {
+      const extracted = await ResumeParserService.extractRawText(req.file.buffer);
+      resumeText = extracted.rawText;
+    } else if (!resumeText && req.body && req.body.resumeProfile) {
+      // 2. If a structured resumeProfile object was provided in body
+      const profileObj = typeof req.body.resumeProfile === 'string'
+        ? JSON.parse(req.body.resumeProfile)
+        : req.body.resumeProfile;
+      resumeText = ResumeParserService.profileToText(profileObj);
+    } else if (!resumeText && req.user && req.user.id) {
+      // 3. Otherwise load the authenticated user's saved resume profile from Firestore
+      const savedProfile = await JobSeekerModel.getResumeJson(req.user.id);
+      if (savedProfile) {
+        resumeText = ResumeParserService.profileToText(savedProfile);
+      }
+    }
+
+    const clientKey = (req.user && req.user.id) || req.ip || 'anonymous';
+
+    const feedback = await ResumeFeedbackService.analyzeResume({
+      resumeText,
+      targetRole,
+      clientKey
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'AI resume feedback generated successfully.',
+      feedback
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message || 'Failed to generate AI resume feedback.'
+    });
+  }
+};
+
 module.exports = {
   uploadResume,
   uploadResumeJson,
   getResumeProfile,
   updateResumeProfile,
-  downloadResumeJson
+  downloadResumeJson,
+  analyzeResumeFeedback
 };

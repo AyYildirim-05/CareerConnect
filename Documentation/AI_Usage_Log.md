@@ -15,3 +15,4 @@
 | Ahmet | 2026-10-23 | [Chat Transcript (Antigravity)](AI_Log/Ahmet/Antigravity_Chat_Log_2026-10-23.md) | Extracted ResumeUpload component styling into dedicated CSS stylesheet (ResumeUpload.css), polished backend test suites, and replaced placeholder mock data with real candidate fixtures. |
 | Su | 2026-10-24 | https://claude.ai/share/64352db1-5a9c-49ec-8754-1ce05d0ffca1 | Fixed merge bugs from US-07.
 | Ahmet | 2026-10-25 | [Chat Transcript (Gemini)](https://share.gemini.google/StTutiVGH2JB) | Setup of CI pipeline.
+| Ahmet | 2026-10-25 | [Chat Transcript (Antigravity)](https://share.gemini.google/StTutiVGH2JB) | Setup of GenAI Resume Analysis Pipeline with the help of antigravity (To be noted that AI found errors in the setup process I have been trying to achieve and overhauled the entirety of it).

@@ -104,6 +104,50 @@ export const uploadJsonProfile = async (jsonData, token) => {
 };
 
 /**
+ * Request GenAI feedback (Strengths, Missing Keywords, Actionable Revisions)
+ * against a target role using either an uploaded PDF file, a resume JSON profile, or saved profile.
+ * @param {Object} params
+ * @param {string} params.targetRole
+ * @param {File} [params.file]
+ * @param {Object} [params.resumeProfile]
+ * @param {string} [params.token]
+ * @returns {Promise<Object>}
+ */
+export const requestResumeFeedback = async ({ targetRole, file = null, resumeProfile = null, token = null }) => {
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  let body;
+  if (file) {
+    const formData = new FormData();
+    formData.append('resume', file);
+    formData.append('targetRole', targetRole);
+    body = formData;
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify({
+      targetRole,
+      ...(resumeProfile ? { resumeProfile } : {})
+    });
+  }
+
+  const response = await fetch(`${API_URL}/feedback`, {
+    method: 'POST',
+    headers,
+    body,
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to generate AI resume feedback.');
+  }
+
+  return data;
+};
+
+/**
  * Download a JavaScript object as a .json file directly in the browser
  * @param {Object} data 
  * @param {string} [filename] 

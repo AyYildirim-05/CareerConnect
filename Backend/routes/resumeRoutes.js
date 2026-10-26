@@ -8,12 +8,17 @@ const {
   uploadResumeJson,
   getResumeProfile,
   updateResumeProfile,
-  downloadResumeJson
+  downloadResumeJson,
+  analyzeResumeFeedback
 } = require('../controllers/resumeController');
 
 // POST /api/resumes/upload
 // Accepts multipart/form-data with 'resume' PDF file, parses into JSON and updates Firestore profile
 router.post('/upload', optionalAuthenticateToken, upload.single('resume'), uploadResume);
+
+// POST /api/resumes/feedback
+// Accepts optional PDF 'resume' upload or JSON body with targetRole, returns GenAI resume feedback
+router.post('/feedback', optionalAuthenticateToken, upload.single('resume'), analyzeResumeFeedback);
 
 // POST /api/resumes/upload-json
 // Accepts JSON resume profile directly and syncs to authenticated user's Firestore profile
