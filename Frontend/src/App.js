@@ -14,6 +14,7 @@ import CompanyPage from './components/CompanyPage';
 import CompanyForm from './components/CompanyForm';
 import SavedJobs from './components/SavedJobs';
 import Messages from './components/Messages';
+import Profile from './pages/Profile';
 
 export default function App() {
   return (
@@ -98,6 +99,16 @@ export default function App() {
               }
             />
             <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            
+<Route
+  path="/profile"
+  element={
+    <ProtectedRoute allowedRoles={['Job Seeker']}>
+      <Profile />
+    </ProtectedRoute>
+  }
+/>
+
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
