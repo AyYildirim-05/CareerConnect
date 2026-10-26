@@ -173,10 +173,12 @@ class JobController {
   /**
    * GET /api/jobs
    * Active job listings (published postings only)
+   * Supports query filters: keyword, location, type, workMode
    */
   static async listPublished(req, res) {
     try {
-      const jobs = await JobPostingModel.findPublished();
+      const { keyword, location, type, workMode } = req.query;
+      const jobs = await JobPostingModel.findPublished({ keyword, location, type, workMode });
       return res.status(200).json({ jobs });
     } catch (error) {
       console.error('List job postings error:', error);

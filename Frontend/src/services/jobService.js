@@ -1,11 +1,26 @@
 import apiRequest from './apiRequest';
 
 /**
- * Fetch active (published) job listings
+ * Fetch active (published) job listings with optional search and filters
  * @param {string} token
+ * @param {Object} [filters={}] - { keyword, location, type, workMode }
  */
-export function fetchPublishedJobs(token) {
-  return apiRequest('/jobs', token);
+export function fetchPublishedJobs(token, filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.keyword && filters.keyword.trim()) {
+    params.append('keyword', filters.keyword.trim());
+  }
+  if (filters.location && filters.location.trim()) {
+    params.append('location', filters.location.trim());
+  }
+  if (filters.type && filters.type.trim()) {
+    params.append('type', filters.type.trim());
+  }
+  if (filters.workMode && filters.workMode.trim()) {
+    params.append('workMode', filters.workMode.trim());
+  }
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest(`/jobs${queryString}`, token);
 }
 
 /**
