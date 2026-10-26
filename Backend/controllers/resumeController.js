@@ -222,8 +222,14 @@ const analyzeResumeFeedback = async (req, res) => {
     } else if (!resumeText && req.user && req.user.id) {
       // 3. Otherwise load the authenticated user's saved resume profile from Firestore
       const savedProfile = await JobSeekerModel.getResumeJson(req.user.id);
-      if (savedProfile) {
+      if (savedProfile && Object.keys(savedProfile).length > 0) {
         resumeText = ResumeParserService.profileToText(savedProfile);
+      }
+      if (!resumeText) {
+        const userRecord = await JobSeekerModel.findById(req.user.id);
+        if (userRecord && userRecord.profile) {
+          resumeText = ResumeParserService.profileToText(userRecord.profile);
+        }
       }
     }
 

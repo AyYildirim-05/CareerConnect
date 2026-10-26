@@ -16,7 +16,6 @@ export default function ResumeFeedbackCard() {
   const { token } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState(ROLE_OPTIONS[0]);
   const [customRole, setCustomRole] = useState('');
-  const [pdfFile, setPdfFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState(null);
@@ -37,14 +36,13 @@ export default function ResumeFeedbackCard() {
     try {
       const response = await requestResumeFeedback({
         targetRole: effectiveRole,
-        file: pdfFile,
         token
       });
       setFeedback(response.feedback);
     } catch (err) {
       setError(
         err.message ||
-          'Could not generate feedback. Make sure you have uploaded a resume or attach a PDF above.'
+          'Could not generate feedback. Make sure you have saved a resume to your profile first.'
       );
     } finally {
       setLoading(false);
@@ -61,7 +59,13 @@ export default function ResumeFeedbackCard() {
             and actionable revisions.
           </p>
         </div>
-        <span className="resume-feedback-badge">GenAI Powered</span>
+        <span className="resume-feedback-badge">
+          {feedback?.provider === 'gemini'
+            ? '✨ Powered by Google Gemini'
+            : feedback?.provider === 'heuristic-analyzer'
+            ? '⚡ Local Heuristic Analyzer'
+            : 'GenAI Powered'}
+        </span>
       </div>
 
       <form className="resume-feedback-form" onSubmit={handleAnalyze}>
@@ -87,18 +91,6 @@ export default function ResumeFeedbackCard() {
               maxLength={100}
             />
           )}
-        </div>
-
-        <div className="feedback-field">
-          <label htmlFor="feedback-pdf-upload">
-            PDF Resume (Optional — uses saved profile if omitted)
-          </label>
-          <input
-            id="feedback-pdf-upload"
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-          />
         </div>
 
         <button

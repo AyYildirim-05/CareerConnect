@@ -147,7 +147,8 @@ class ResumeFeedbackService {
    * @private
    */
   static async _callGeminiApi(resumeText, targetRole, apiKey) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const modelName = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const prompt = `You are an expert technical recruiter and career coach.
 Analyze the following candidate's resume against the target job role: "${targetRole}".

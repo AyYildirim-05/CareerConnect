@@ -81,17 +81,30 @@ class ResumeParserService {
 
     const parts = [];
     const info = profile.personalInfo || {};
-    if (info.fullName) parts.push(`Name: ${info.fullName}`);
-    if (info.summary) parts.push(`Summary: ${info.summary}`);
+    const fullName =
+      info.fullName ||
+      [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
+    const summary = info.summary || profile.headline || profile.bio || '';
+
+    if (fullName) parts.push(`Name: ${fullName}`);
+    if (summary) parts.push(`Summary: ${summary}`);
+    if (info.linkedin) parts.push(`LinkedIn: ${info.linkedin}`);
+    if (info.github) parts.push(`GitHub: ${info.github}`);
+    if (info.portfolio) parts.push(`Portfolio: ${info.portfolio}`);
 
     if (profile.skills) {
+      const cats = profile.skills.categories || {};
       const skillList = Array.isArray(profile.skills)
         ? profile.skills
         : [
             ...(profile.skills.technical || []),
             ...(profile.skills.soft || []),
             ...(profile.skills.tools || []),
-            ...(profile.skills.all || [])
+            ...(profile.skills.all || []),
+            ...(cats.languages || []),
+            ...(cats.frameworksAndTools || []),
+            ...(cats.technical || []),
+            ...(cats.softSkills || [])
           ];
       if (skillList.length > 0) {
         parts.push(`Skills: ${[...new Set(skillList)].join(', ')}`);
@@ -99,16 +112,25 @@ class ResumeParserService {
     }
 
     if (Array.isArray(profile.workExperience) && profile.workExperience.length > 0) {
-      const expLines = profile.workExperience.map(exp =>
-        `${exp.jobTitle || exp.role || ''} at ${exp.company || ''} (${exp.dates || ''}): ${exp.description || (exp.responsibilities || []).join(' ')}`
-      );
+      const expLines = profile.workExperience.map(exp => {
+        const roleTitle = exp.title || exp.jobTitle || exp.role || '';
+        const details =
+          exp.description ||
+          (exp.bullets || exp.responsibilities || []).join(' ');
+        return `${roleTitle} at ${exp.company || ''} (${exp.dates || ''}): ${details}`;
+      });
       parts.push(`Work Experience:\n${expLines.join('\n')}`);
     }
 
     if (Array.isArray(profile.projects) && profile.projects.length > 0) {
-      const projLines = profile.projects.map(proj =>
-        `${proj.name || proj.title || ''} (${(proj.technologies || []).join(', ')}): ${proj.description || ''}`
-      );
+      const projLines = profile.projects.map(proj => {
+        const tech = (proj.techStack || proj.technologies || []).join(', ');
+        const details =
+          (Array.isArray(proj.bullets) && proj.bullets.length > 0
+            ? proj.bullets.join(' ')
+            : proj.description) || '';
+        return `${proj.name || proj.title || ''}${tech ? ` (${tech})` : ''}: ${details}`;
+      });
       parts.push(`Projects:\n${projLines.join('\n')}`);
     }
 
