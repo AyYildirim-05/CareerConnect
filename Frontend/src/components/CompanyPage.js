@@ -46,6 +46,9 @@ export default function CompanyPage() {
 
   return (
     <div>
+      {company.logo && (
+        <img src={company.logo} alt={`${company.name} logo`} style={{ width: 96, height: 96, objectFit: 'contain' }} />
+      )}
       <h1 style={{ marginBottom: '0.25rem' }}>{company.name}</h1>
       {details.length > 0 && <p style={{ margin: '0.25rem 0' }}>{details.join(' · ')}</p>}
       {company.website && (

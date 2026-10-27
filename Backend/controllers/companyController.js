@@ -53,13 +53,7 @@ class CompanyController {
    */
   static async getMine(req, res) {
     try {
-      let company = await CompanyModel.findByOwner(req.user.id);
-      if (!company) {
-        const user = await UserModel.findById(req.user.id);
-        if (user && user.companyId) {
-          company = await CompanyModel.findById(user.companyId);
-        }
-      }
+      const company = await CompanyModel.findForUser(req.user.id);
       return res.status(200).json({ company });
     } catch (error) {
       console.error('Get my company error:', error);
@@ -156,6 +150,48 @@ class CompanyController {
     } catch (error) {
       console.error('Update company error:', error);
       return res.status(500).json({ message: 'Failed to update company page.' });
+    }
+  }
+
+  /**
+   * PUT /api/companies/mine/logo
+   * Upload or replace the logo of the logged-in recruiter's company (owner only)
+   */
+  static async uploadLogo(req, res) {
+    try {
+      const company = await CompanyModel.findByOwner(req.user.id);
+      if (!company) {
+        return res.status(404).json({ error: 'You have not set up a company page yet.' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image was uploaded.' });
+      }
+
+      const logo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      const updatedCompany = await CompanyModel.update(company.id, { logo });
+      return res.status(200).json({ message: 'Company logo updated.', company: updatedCompany });
+    } catch (error) {
+      console.error('Upload company logo error:', error);
+      return res.status(500).json({ error: 'Failed to upload company logo.' });
+    }
+  }
+
+  /**
+   * DELETE /api/companies/mine/logo
+   * Remove the logo of the logged-in recruiter's company (owner only)
+   */
+  static async removeLogo(req, res) {
+    try {
+      const company = await CompanyModel.findByOwner(req.user.id);
+      if (!company) {
+        return res.status(404).json({ error: 'You have not set up a company page yet.' });
+      }
+
+      const updatedCompany = await CompanyModel.update(company.id, { logo: null });
+      return res.status(200).json({ message: 'Company logo removed.', company: updatedCompany });
+    } catch (error) {
+      console.error('Remove company logo error:', error);
+      return res.status(500).json({ error: 'Failed to remove company logo.' });
     }
   }
 

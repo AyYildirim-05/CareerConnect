@@ -246,3 +246,49 @@ test('CompanyController.updateMine returns 500 on database error', async (t) => 
 
   assert.strictEqual(res.statusCode, 500);
 });
+
+// ---------- Company logo ----------
+
+const pngFile = { mimetype: 'image/png', buffer: Buffer.from('fake-png') };
+
+test('CompanyController.uploadLogo stores the image as a data URL for the owner', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.uploadLogo({ user: { id: 'rec_owner' }, file: pngFile }, res);
+
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(calls.updated[0], 'cmp_1');
+  assert.strictEqual(calls.updated[1].logo, `data:image/png;base64,${pngFile.buffer.toString('base64')}`);
+  assert.strictEqual(res.data.company.logo, calls.updated[1].logo);
+});
+
+test('CompanyController.uploadLogo rejects a request without a file', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.uploadLogo({ user: { id: 'rec_owner' } }, res);
+
+  assert.strictEqual(res.statusCode, 400);
+  assert.strictEqual(calls.updated, undefined);
+});
+
+test('CompanyController.uploadLogo returns 404 for a recruiter who owns no company', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.uploadLogo({ user: { id: 'rec_member' }, file: pngFile }, res);
+
+  assert.strictEqual(res.statusCode, 404);
+  assert.strictEqual(calls.updated, undefined);
+});
+
+test('CompanyController.removeLogo clears the logo', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.removeLogo({ user: { id: 'rec_owner' } }, res);
+
+  assert.strictEqual(res.statusCode, 200);
+  assert.deepStrictEqual(calls.updated, ['cmp_1', { logo: null }]);
+});

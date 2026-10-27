@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { createCompany, updateMyCompany, joinCompany, fetchCompanies } from '../services/companyService';
+import { createCompany, updateMyCompany, joinCompany, fetchCompanies, uploadCompanyLogo, removeCompanyLogo } from '../services/companyService';
 
 // Must match COMPANY_SIZES in Backend/models/companyModel.js
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
@@ -21,7 +21,7 @@ const EMPTY_FORM = {
  * afterwards the same form is used to edit it.
  */
 export default function CompanyForm() {
-  const { token, company, setCompany } = useAuth();
+  const { token, user, company, setCompany } = useAuth();
   const isEditing = Boolean(company);
 
   // 'choose' shown only to new recruiters; 'create' and 'join' are the two paths
@@ -38,8 +38,24 @@ export default function CompanyForm() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const [logoSaving, setLogoSaving] = useState(false);
 
   const navigate = useNavigate();
+
+  // Logo is saved on its own, separately from the text fields below
+  const handleLogo = async (file) => {
+    setLogoError('');
+    setLogoSaving(true);
+    try {
+      const res = file ? await uploadCompanyLogo(file, token) : await removeCompanyLogo(token);
+      setCompany(res.company);
+    } catch (err) {
+      setLogoError(err.error || err.message || 'Failed to update logo.');
+    } finally {
+      setLogoSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (mode !== 'join') return;
@@ -105,6 +121,17 @@ export default function CompanyForm() {
     }
   };
 
+  // Members who joined a company can post jobs under it, but only the owner edits the page
+  if (company && company.ownerId !== String(user.id)) {
+    return (
+      <div>
+        <h2>{company.name}</h2>
+        <p>You are a member of this company. Only its owner can edit the company page.</p>
+        <Link to={`/companies/${company.id}`}>View company page</Link>
+      </div>
+    );
+  }
+
   if (mode === 'choose') {
     return (
       <div>
@@ -151,6 +178,28 @@ export default function CompanyForm() {
         <p>This is what job seekers see on your company page.</p>
       ) : (
         <p>Every recruiter represents one company. Tell job seekers about yours before posting jobs.</p>
+      )}
+
+      {isEditing && (
+        <div>
+          <label htmlFor="logo">Company Logo (PNG, JPEG or WebP, max 500 KB):</label><br />
+          {company.logo && (
+            <img src={company.logo} alt={`${company.name} logo`} style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
+          )}
+          <input
+            id="logo"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={logoSaving}
+            onChange={(e) => { if (e.target.files[0]) handleLogo(e.target.files[0]); e.target.value = ''; }}
+          />
+          {company.logo && (
+            <button type="button" onClick={() => handleLogo(null)} disabled={logoSaving}>Remove Logo</button>
+          )}
+          {logoSaving && <span> Saving...</span>}
+          {logoError && <p style={{ color: 'red' }}>{logoError}</p>}
+          <br />
+        </div>
       )}
 
       {serverError && <p style={{ color: 'red' }}>{serverError}</p>}

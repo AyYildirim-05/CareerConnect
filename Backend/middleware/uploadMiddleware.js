@@ -24,4 +24,21 @@ const upload = multer({
   },
 });
 
+// Company logos: small images only.
+// shortcut: logo stored base64 in Firestore doc (1 MB doc limit), move to Firebase Storage if logos get bigger or the company list gets slow
+const imageUpload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (["image/png", "image/jpeg", "image/webp"].includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PNG, JPEG or WebP images are allowed."), false);
+    }
+  },
+  limits: {
+    fileSize: 500 * 1024, // 500 KB
+  },
+});
+
 module.exports = upload;
+module.exports.imageUpload = imageUpload;
