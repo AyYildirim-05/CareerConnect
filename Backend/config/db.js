@@ -37,7 +37,26 @@ async function initDb() {
     }
   }
 
-  // 2. Firebase Firestore (Default Primary Database)
+  // 2. In-Memory Mock Firestore (for local dev, tests, or demo without GCP credentials)
+  const createMockFirestore = require('./mockFirestore');
+  const hasCredentials = Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
+    (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) ||
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS
+  );
+
+  if (targetProvider === 'mock' || targetProvider === 'local' || !hasCredentials) {
+    if (!hasCredentials && targetProvider !== 'mock') {
+      console.log('ℹ️ No Firebase Cloud credentials found. Using In-Memory Firestore Provider with pre-seeded demo data.');
+    }
+    firestoreDb = createMockFirestore();
+    activeProvider = 'mock';
+    console.log('📦 Connected to In-Memory Firestore Provider (Demo Mode).');
+    return firestoreDb;
+  }
+
+  // 3. Firebase Firestore (Production / Cloud Connection)
   try {
     if (admin.apps.length === 0) {
       let certObj = null;
@@ -62,7 +81,6 @@ async function initDb() {
           projectId: process.env.FIREBASE_PROJECT_ID || 'soen-341-a1f89'
         });
       } else {
-        // Fallback default init with project ID
         admin.initializeApp({
           projectId: process.env.FIREBASE_PROJECT_ID || 'soen-341-a1f89'
         });
@@ -74,8 +92,10 @@ async function initDb() {
     console.log('🔥 Connected to Firebase Firestore Database.');
     return firestoreDb;
   } catch (err) {
-    console.error('Firebase initialization error:', err.message);
-    throw err;
+    console.warn('Firebase initialization error, falling back to In-Memory Provider:', err.message);
+    firestoreDb = createMockFirestore();
+    activeProvider = 'mock';
+    return firestoreDb;
   }
 }
 
