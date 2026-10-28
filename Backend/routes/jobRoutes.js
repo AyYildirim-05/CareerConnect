@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const JobController = require('../controllers/jobController');
 const SavedJobController = require('../controllers/savedJobController');
+const JobMatchController = require('../controllers/jobMatchController');
 const { authenticateToken, authorizeRoles } = require('../middleware/authMiddleware');
 
 // All job routes require a logged-in user
@@ -18,6 +19,10 @@ router.get('/mine', authorizeRoles('Recruiter'), JobController.listMine);
 router.get('/saved', SavedJobController.listMine);
 
 router.get('/:id', JobController.getById);
+
+// AI Compatibility Match & Gap Analysis (Task 9.2)
+router.get('/:id/match', JobMatchController.getMatchAnalysis);
+router.post('/:id/match', JobMatchController.getMatchAnalysis);
 
 // Bookmark / un-bookmark a job
 router.post('/:id/save', SavedJobController.save);

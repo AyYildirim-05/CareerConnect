@@ -17,3 +17,4 @@
 | Ahmet | 2026-10-25 | [Chat Transcript (Gemini)](https://share.gemini.google/StTutiVGH2JB) | Setup of CI pipeline.
 | Ahmet | 2026-10-25 | [Chat Transcript (Antigravity)](https://share.gemini.google/StTutiVGH2JB) | Setup of GenAI Resume Analysis Pipeline with the help of antigravity (To be noted that AI found errors in the setup process I have been trying to achieve and overhauled the entirety of it).
 | Nassim | 2026-10-26 | [Chat Transcript (Claude Code)](AI_Log/Nassim/Claude_Chat_Log_2026-10-26.md) | Wrote backend unit tests for job posting creation/editing and company creating/joining/editing|
+| Ahmet | 2026-10-28 | [Chat Transcript (Antigravity)](AI_Log/Ahmet/Antigravity_Chat_Log_2026-10-28.md) | Implemented AI Compatibility score and missing skills compared to desired job posting, seeded 20 varied jobs and 5 companies into Firestore, and added unit tests (`jobMatch.test.js`). |
