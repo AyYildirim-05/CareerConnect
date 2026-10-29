@@ -4,9 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { createCompany, updateMyCompany, joinCompany, fetchCompanies, uploadCompanyLogo, removeCompanyLogo } from '../services/companyService';
 import LogoCropper from './LogoCropper';
 
-// Must match the imageUpload limit in Backend/middleware/uploadMiddleware.js
-const MAX_LOGO_BYTES = 500 * 1024;
-
 // Must match COMPANY_SIZES in Backend/models/companyModel.js
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
 
@@ -53,14 +50,10 @@ export default function CompanyForm() {
     setCropSrc(null);
   };
 
-  // Too-big logos go through the cropper first instead of being rejected by the server
+  // Every logo goes through the cropper so it is always square and under the server's 500 KB limit
   const handleLogoPick = (file) => {
     setLogoError('');
-    if (file.size > MAX_LOGO_BYTES) {
-      setCropSrc(URL.createObjectURL(file));
-    } else {
-      handleLogo(file);
-    }
+    setCropSrc(URL.createObjectURL(file));
   };
 
   // Logo is saved on its own, separately from the text fields below
@@ -203,7 +196,7 @@ export default function CompanyForm() {
 
       {isEditing && (
         <div>
-          <label htmlFor="logo">Company Logo (PNG, JPEG or WebP, max 500 KB, bigger images can be cropped):</label><br />
+          <label htmlFor="logo">Company Logo (PNG, JPEG or WebP, cropped to a square):</label><br />
           {company.logo && (
             <img src={company.logo} alt={`${company.name} logo`} style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
           )}

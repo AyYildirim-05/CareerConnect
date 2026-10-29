@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 const BOX = 256;
 
 /**
- * Square crop for logos that are too big to upload as-is.
+ * Square crop applied to every logo before upload.
  * Drag (or arrow keys) to move, slider to zoom. Calls onCrop with a PNG File.
  */
 export default function LogoCropper({ src, onCrop, onCancel }) {
@@ -66,7 +66,7 @@ export default function LogoCropper({ src, onCrop, onCancel }) {
 
   return (
     <div>
-      <p>This image is over 500 KB. Drag to position it and zoom to crop it.</p>
+      <p>Drag to position your logo and zoom to crop it to a square.</p>
       <div
         tabIndex={0}
         role="img"
