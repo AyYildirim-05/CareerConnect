@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5500;
@@ -40,6 +41,8 @@ app.use('/api/companies', companyRoutes);
 // Conversation and Message Routes
 const messageRoutes = require('./routes/messageRoutes');
 app.use('/api/conversations', messageRoutes);
+// Profile Management Routes
+app.use('/api/profile', profileRoutes);
 
 // 404 Handler
 app.use((req, res) => {
