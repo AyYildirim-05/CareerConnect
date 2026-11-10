@@ -47,7 +47,7 @@ export default function CompanyPage() {
   return (
     <div>
       {company.banner && (
-        <img src={company.banner} alt={`${company.name} banner`} style={{ width: '100%', maxHeight: 200, aspectRatio: '4 / 1', objectFit: 'cover', display: 'block' }} />
+        <img src={company.banner} alt={`${company.name} banner`} style={{ width: '100%', maxWidth: 600, aspectRatio: '4 / 1', objectFit: 'cover', display: 'block' }} />
       )}
       {company.logo && (
         <img src={company.logo} alt={`${company.name} logo`} style={{ width: 96, height: 96, objectFit: 'contain' }} />
