@@ -305,6 +305,38 @@ test('CompanyController.uploadBanner stores the image as a data URL for the owne
   assert.deepStrictEqual(calls.updated, ['cmp_1', { banner: `data:image/png;base64,${pngFile.buffer.toString('base64')}` }]);
 });
 
+test('CompanyController.uploadBanner rejects a request without a file', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.uploadBanner({ user: { id: 'rec_owner' } }, res);
+
+  assert.strictEqual(res.statusCode, 400);
+  assert.strictEqual(calls.updated, undefined);
+});
+
+test('CompanyController.uploadBanner returns 404 for a recruiter who owns no company', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.uploadBanner({ user: { id: 'rec_member' }, file: pngFile }, res);
+
+  assert.strictEqual(res.statusCode, 404);
+  assert.strictEqual(calls.updated, undefined);
+});
+
+test('CompanyController.uploadBanner returns 500 when saving fails', async (t) => {
+  stubModels(t);
+  t.mock.method(CompanyModel, 'update', async () => { throw new Error('Document exceeds 1 MB'); });
+  t.mock.method(console, 'error', () => {});
+  const res = createMockRes();
+
+  await CompanyController.uploadBanner({ user: { id: 'rec_owner' }, file: pngFile }, res);
+
+  assert.strictEqual(res.statusCode, 500);
+  assert.strictEqual(res.data.error, 'Failed to update company banner.');
+});
+
 test('CompanyController.removeBanner clears only the banner', async (t) => {
   const calls = stubModels(t);
   const res = createMockRes();
@@ -323,4 +355,41 @@ test('CompanyController.list leaves banners out of the company list', async (t) 
   await CompanyController.list({ user: { id: 'u1' } }, res);
 
   assert.deepStrictEqual(res.data.companies, [{ id: 'cmp_1', name: 'Acme', logo: 'L' }]);
+});
+
+// ---------- Banner upload limits (real multer, through a tiny express app) ----------
+
+const express = require('express');
+const { bannerUpload } = require('../middleware/uploadMiddleware');
+
+async function postBanner(t, bytes, type) {
+  const app = express();
+  app.put('/banner', (req, res) =>
+    bannerUpload.single('banner')(req, res, (err) =>
+      (err ? res.status(400).json({ error: err.message }) : res.json({ size: req.file.size }))));
+  const server = app.listen(0);
+  t.after(() => server.close());
+
+  const form = new FormData();
+  form.append('banner', new Blob([Buffer.alloc(bytes)], { type }), 'banner.jpg');
+  const res = await fetch(`http://localhost:${server.address().port}/banner`, { method: 'PUT', body: form });
+  return { status: res.status, body: await res.json() };
+}
+
+test('bannerUpload accepts a JPEG at the 300 KB limit', async (t) => {
+  const res = await postBanner(t, 300 * 1024, 'image/jpeg');
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.body.size, 300 * 1024);
+});
+
+test('bannerUpload rejects a banner over 300 KB', async (t) => {
+  const res = await postBanner(t, 300 * 1024 + 1, 'image/jpeg');
+  assert.strictEqual(res.status, 400);
+  assert.match(res.body.error, /too large/i);
+});
+
+test('bannerUpload rejects files that are not PNG, JPEG or WebP', async (t) => {
+  const res = await postBanner(t, 10, 'image/gif');
+  assert.strictEqual(res.status, 400);
+  assert.match(res.body.error, /Only PNG, JPEG or WebP/);
 });
