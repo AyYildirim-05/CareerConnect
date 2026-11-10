@@ -55,16 +55,17 @@ export function joinCompany(id, token) {
 }
 
 /**
- * Upload or replace the logged-in recruiter's company logo
- * @param {File} file - PNG, JPEG or WebP image (max 500 KB)
+ * Upload or replace the logged-in recruiter's company logo or banner
+ * @param {'logo'|'banner'} field
+ * @param {File} file - PNG, JPEG or WebP image (max 300 KB)
  * @param {string} token
  */
-export async function uploadCompanyLogo(file, token) {
+export async function uploadCompanyImage(field, file, token) {
   const formData = new FormData();
-  formData.append('logo', file);
+  formData.append(field, file);
 
   // apiRequest only sends JSON, so post the multipart form directly
-  const response = await fetch(`${API_BASE_URL}/companies/mine/logo`, {
+  const response = await fetch(`${API_BASE_URL}/companies/mine/${field}`, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}` },
     body: formData
@@ -78,9 +79,10 @@ export async function uploadCompanyLogo(file, token) {
 }
 
 /**
- * Remove the logged-in recruiter's company logo
+ * Remove the logged-in recruiter's company logo or banner
+ * @param {'logo'|'banner'} field
  * @param {string} token
  */
-export function removeCompanyLogo(token) {
-  return apiRequest('/companies/mine/logo', token, { method: 'DELETE' });
+export function removeCompanyImage(field, token) {
+  return apiRequest(`/companies/mine/${field}`, token, { method: 'DELETE' });
 }

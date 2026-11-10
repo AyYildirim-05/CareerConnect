@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const CompanyController = require('../controllers/companyController');
 const { authenticateToken, authorizeRoles } = require('../middleware/authMiddleware');
-const { imageUpload } = require('../middleware/uploadMiddleware');
+const { imageUpload, bannerUpload } = require('../middleware/uploadMiddleware');
 
 // All company routes require a logged-in user
 router.use(authenticateToken);
@@ -17,11 +17,13 @@ router.put('/mine', authorizeRoles('Recruiter'), CompanyController.updateMine);
 router.post('/', authorizeRoles('Recruiter'), CompanyController.create);
 
 // The global error handler returns a generic 500, so report bad uploads (wrong type, too large) here
-const logoUpload = (req, res, next) =>
-  imageUpload.single('logo')(req, res, (err) => (err ? res.status(400).json({ error: err.message }) : next()));
+const single = (uploader, field) => (req, res, next) =>
+  uploader.single(field)(req, res, (err) => (err ? res.status(400).json({ error: err.message }) : next()));
 
-router.put('/mine/logo', authorizeRoles('Recruiter'), logoUpload, CompanyController.uploadLogo);
+router.put('/mine/logo', authorizeRoles('Recruiter'), single(imageUpload, 'logo'), CompanyController.uploadLogo);
 router.delete('/mine/logo', authorizeRoles('Recruiter'), CompanyController.removeLogo);
+router.put('/mine/banner', authorizeRoles('Recruiter'), single(bannerUpload, 'banner'), CompanyController.uploadBanner);
+router.delete('/mine/banner', authorizeRoles('Recruiter'), CompanyController.removeBanner);
 
 router.post('/:id/join', authorizeRoles('Recruiter'), CompanyController.join);
 router.get('/:id', CompanyController.getById);

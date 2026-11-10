@@ -292,3 +292,35 @@ test('CompanyController.removeLogo clears the logo', async (t) => {
   assert.strictEqual(res.statusCode, 200);
   assert.deepStrictEqual(calls.updated, ['cmp_1', { logo: null }]);
 });
+
+// ---------- Company banner ----------
+
+test('CompanyController.uploadBanner stores the image as a data URL for the owner', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.uploadBanner({ user: { id: 'rec_owner' }, file: pngFile }, res);
+
+  assert.strictEqual(res.statusCode, 200);
+  assert.deepStrictEqual(calls.updated, ['cmp_1', { banner: `data:image/png;base64,${pngFile.buffer.toString('base64')}` }]);
+});
+
+test('CompanyController.removeBanner clears only the banner', async (t) => {
+  const calls = stubModels(t);
+  const res = createMockRes();
+
+  await CompanyController.removeBanner({ user: { id: 'rec_owner' } }, res);
+
+  assert.strictEqual(res.statusCode, 200);
+  assert.deepStrictEqual(calls.updated, ['cmp_1', { banner: null }]);
+});
+
+test('CompanyController.list leaves banners out of the company list', async (t) => {
+  stubModels(t);
+  t.mock.method(CompanyModel, 'findAll', async () => [{ id: 'cmp_1', name: 'Acme', logo: 'L', banner: 'B' }]);
+  const res = createMockRes();
+
+  await CompanyController.list({ user: { id: 'u1' } }, res);
+
+  assert.deepStrictEqual(res.data.companies, [{ id: 'cmp_1', name: 'Acme', logo: 'L' }]);
+});

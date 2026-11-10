@@ -15,7 +15,7 @@ const formatTime = (iso) =>
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  })
 
 export default function Messages() {
   const { user, token } = useAuth();

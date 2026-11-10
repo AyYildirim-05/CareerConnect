@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { createCompany, updateMyCompany, joinCompany, fetchCompanies, uploadCompanyLogo, removeCompanyLogo } from '../services/companyService';
-import LogoCropper from './LogoCropper';
+import { createCompany, updateMyCompany, joinCompany, fetchCompanies, uploadCompanyImage, removeCompanyImage } from '../services/companyService';
+import ImageCropper from './ImageCropper';
+
+// Banner crop box is 600x150 on screen, uploaded as a 1200x300 JPEG (well under the 300 KB banner limit)
+const BANNER_CROP = { width: 600, height: 150, outScale: 2, type: 'image/jpeg', name: 'banner', hint: 'Drag to position your banner and zoom to crop it.' };
 
 // Must match COMPANY_SIZES in Backend/models/companyModel.js
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
@@ -39,35 +42,38 @@ export default function CompanyForm() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [logoError, setLogoError] = useState('');
-  const [logoSaving, setLogoSaving] = useState(false);
-  const [cropSrc, setCropSrc] = useState(null); // object URL of an oversized logo being cropped
+  const [imageError, setImageError] = useState('');
+  const [imageSaving, setImageSaving] = useState(false);
+  const [crop, setCrop] = useState(null); // { field: 'logo'|'banner', src: object URL } while cropping
+  const [imageField, setImageField] = useState(null); // image last picked/saved, so its cropper and status show next to it
 
   const navigate = useNavigate();
 
   const closeCropper = () => {
-    URL.revokeObjectURL(cropSrc);
-    setCropSrc(null);
+    URL.revokeObjectURL(crop.src);
+    setCrop(null);
   };
 
-  // Every logo goes through the cropper so it is always square and under the server's 500 KB limit
-  const handleLogoPick = (file) => {
-    setLogoError('');
-    setCropSrc(URL.createObjectURL(file));
+  // Every image goes through the cropper so it has a fixed shape and stays under the server's size limit
+  const handleImagePick = (field, file) => {
+    setImageError('');
+    setImageField(field);
+    setCrop({ field, src: URL.createObjectURL(file) });
   };
 
-  // Logo is saved on its own, separately from the text fields below
-  const handleLogo = async (file) => {
-    if (cropSrc) closeCropper();
-    setLogoError('');
-    setLogoSaving(true);
+  // Logo and banner are saved on their own, separately from the text fields below
+  const handleImage = async (field, file) => {
+    if (crop) closeCropper();
+    setImageField(field);
+    setImageError('');
+    setImageSaving(true);
     try {
-      const res = file ? await uploadCompanyLogo(file, token) : await removeCompanyLogo(token);
+      const res = file ? await uploadCompanyImage(field, file, token) : await removeCompanyImage(field, token);
       setCompany(res.company);
     } catch (err) {
-      setLogoError(err.error || err.message || 'Failed to update logo.');
+      setImageError(err.error || err.message || `Failed to update ${field}.`);
     } finally {
-      setLogoSaving(false);
+      setImageSaving(false);
     }
   };
 
@@ -180,6 +186,21 @@ export default function CompanyForm() {
     );
   }
 
+  const imageStatus = (
+    <>
+      {crop && (
+        <ImageCropper
+          {...(crop.field === 'banner' ? BANNER_CROP : {})}
+          src={crop.src}
+          onCrop={(file) => handleImage(crop.field, file)}
+          onCancel={closeCropper}
+        />
+      )}
+      {imageSaving && <span> Saving...</span>}
+      {imageError && <p style={{ color: 'red' }}>{imageError}</p>}
+    </>
+  );
+
   return (
     <div>
       <h2>{isEditing ? 'Edit Company Profile' : 'Set Up Your Company Page'}</h2>
@@ -196,23 +217,37 @@ export default function CompanyForm() {
 
       {isEditing && (
         <div>
+          <label htmlFor="banner">Company Banner (PNG, JPEG or WebP, cropped to 4:1):</label><br />
+          {company.banner && (
+            <img src={company.banner} alt={`${company.name} banner`} style={{ width: '100%', maxWidth: 600, aspectRatio: '4 / 1', objectFit: 'cover', display: 'block' }} />
+          )}
+          <input
+            id="banner"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={imageSaving || Boolean(crop)}
+            onChange={(e) => { if (e.target.files[0]) handleImagePick('banner', e.target.files[0]); e.target.value = ''; }}
+          />
+          {company.banner && !crop && (
+            <button type="button" onClick={() => handleImage('banner', null)} disabled={imageSaving}>Remove Banner</button>
+          )}
+          {imageField === 'banner' && imageStatus}
+          <br /><br />
           <label htmlFor="logo">Company Logo (PNG, JPEG or WebP, cropped to a square):</label><br />
           {company.logo && (
             <img src={company.logo} alt={`${company.name} logo`} style={{ width: 96, height: 96, objectFit: 'contain', display: 'block' }} />
           )}
-          {cropSrc && <LogoCropper src={cropSrc} onCrop={handleLogo} onCancel={closeCropper} />}
           <input
             id="logo"
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            disabled={logoSaving || Boolean(cropSrc)}
-            onChange={(e) => { if (e.target.files[0]) handleLogoPick(e.target.files[0]); e.target.value = ''; }}
+            disabled={imageSaving || Boolean(crop)}
+            onChange={(e) => { if (e.target.files[0]) handleImagePick('logo', e.target.files[0]); e.target.value = ''; }}
           />
-          {company.logo && !cropSrc && (
-            <button type="button" onClick={() => handleLogo(null)} disabled={logoSaving}>Remove Logo</button>
+          {company.logo && !crop && (
+            <button type="button" onClick={() => handleImage('logo', null)} disabled={imageSaving}>Remove Logo</button>
           )}
-          {logoSaving && <span> Saving...</span>}
-          {logoError && <p style={{ color: 'red' }}>{logoError}</p>}
+          {imageField === 'logo' && imageStatus}
           <br />
         </div>
       )}

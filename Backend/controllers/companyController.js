@@ -39,7 +39,8 @@ class CompanyController {
    */
   static async list(req, res) {
     try {
-      const companies = await CompanyModel.findAll();
+      // Banners are only shown on the company's own page, so keep the list light
+      const companies = (await CompanyModel.findAll()).map(({ banner, ...c }) => c);
       return res.status(200).json({ companies });
     } catch (error) {
       console.error('List companies error:', error);
@@ -154,46 +155,32 @@ class CompanyController {
   }
 
   /**
-   * PUT /api/companies/mine/logo
-   * Upload or replace the logo of the logged-in recruiter's company (owner only)
+   * PUT|DELETE /api/companies/mine/logo and /mine/banner
+   * Upload, replace or remove (file === null) an image of the logged-in recruiter's company (owner only)
    */
-  static async uploadLogo(req, res) {
+  static async setImage(req, res, field, remove) {
     try {
       const company = await CompanyModel.findByOwner(req.user.id);
       if (!company) {
         return res.status(404).json({ error: 'You have not set up a company page yet.' });
       }
-      if (!req.file) {
+      if (!remove && !req.file) {
         return res.status(400).json({ error: 'No image was uploaded.' });
       }
 
-      const logo = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-      const updatedCompany = await CompanyModel.update(company.id, { logo });
-      return res.status(200).json({ message: 'Company logo updated.', company: updatedCompany });
+      const value = remove ? null : `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      const updatedCompany = await CompanyModel.update(company.id, { [field]: value });
+      return res.status(200).json({ message: `Company ${field} ${remove ? 'removed' : 'updated'}.`, company: updatedCompany });
     } catch (error) {
-      console.error('Upload company logo error:', error);
-      return res.status(500).json({ error: 'Failed to upload company logo.' });
+      console.error(`Update company ${field} error:`, error);
+      return res.status(500).json({ error: `Failed to update company ${field}.` });
     }
   }
 
-  /**
-   * DELETE /api/companies/mine/logo
-   * Remove the logo of the logged-in recruiter's company (owner only)
-   */
-  static async removeLogo(req, res) {
-    try {
-      const company = await CompanyModel.findByOwner(req.user.id);
-      if (!company) {
-        return res.status(404).json({ error: 'You have not set up a company page yet.' });
-      }
-
-      const updatedCompany = await CompanyModel.update(company.id, { logo: null });
-      return res.status(200).json({ message: 'Company logo removed.', company: updatedCompany });
-    } catch (error) {
-      console.error('Remove company logo error:', error);
-      return res.status(500).json({ error: 'Failed to remove company logo.' });
-    }
-  }
+  static uploadLogo(req, res) { return CompanyController.setImage(req, res, 'logo', false); }
+  static removeLogo(req, res) { return CompanyController.setImage(req, res, 'logo', true); }
+  static uploadBanner(req, res) { return CompanyController.setImage(req, res, 'banner', false); }
+  static removeBanner(req, res) { return CompanyController.setImage(req, res, 'banner', true); }
 
   /**
    * GET /api/companies/:id
