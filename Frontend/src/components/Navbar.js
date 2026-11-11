@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { fetchNotifications, markNotificationRead } from '../services/notificationService';
+import { fetchNotifications, markNotificationRead, clearAllNotifications } from '../services/notificationService';
+
 
 export default function Navbar() {
   const { user, isAuthenticated, logout, company, token } = useAuth();
@@ -35,6 +36,14 @@ useEffect(() => {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      await clearAllNotifications(token);
+      setNotifications([]);
+    } catch (err) {
+      console.error('Failed to clear notifications', err);
+    }
+  };
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleLogout = () => {
@@ -74,22 +83,29 @@ useEffect(() => {
             </button>
 
             {showDropdown && (
-              <div style={{ position: 'absolute', left: 0, top: '28px', width: '280px', background: 'white', border: '1px solid #ccc', boxShadow: '0px 4px 6px rgba(0,0,0,0.1)', zIndex: 1000, padding: '10px', maxHeight: '350px', overflowY: 'auto', textAlign: 'left' }}>
-                <strong style={{ fontSize: '13px' }}>Deadline Reminders</strong>
-                {notifications.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>No deadline alerts yet.</p>
-                ) : (
-                  notifications.map(n => (
-                    <div key={n.id} style={{ padding: '6px 0', borderBottom: '1px solid #eee', background: n.read ? '#fff' : '#f9f9f9' }}>
-                      <p style={{ fontSize: '11px', margin: '0 0 4px 0', color: '#333' }}>{n.message}</p>
-                      {!n.read && (
-                        <button onClick={() => handleMarkRead(n.id)} style={{ fontSize: '10px', cursor: 'pointer' }}>Mark as read</button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+    <div style={{ position: 'absolute', left: 0, top: '28px', width: '280px', background: 'white', border: '1px solid #ccc', boxShadow: '0px 4px 6px rgba(0,0,0,0.1)', zIndex: 1000, padding: '10px', maxHeight: '350px', overflowY: 'auto', textAlign: 'left' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <strong style={{ fontSize: '13px' }}>Deadline Reminders</strong>
+        {notifications.length > 0 && (
+          <button onClick={handleClearAll} style={{ fontSize: '10px', cursor: 'pointer', background: '#eea1e4', color: 'white', border: 'none', padding: '2px 6px', borderRadius: '3px' }}>
+            Clear All
+          </button>
+        )}
+      </div>
+      {notifications.length === 0 ? (
+        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>No deadline alerts yet.</p>
+      ) : (
+        notifications.map(n => (
+          <div key={n.id} style={{ padding: '6px 0', borderBottom: '1px solid #eee', background: n.read ? '#fff' : '#f9f9f9' }}>
+            <p style={{ fontSize: '11px', margin: '0 0 4px 0', color: '#333' }}>{n.message}</p>
+            {!n.read && (
+              <button onClick={() => handleMarkRead(n.id)} style={{ fontSize: '10px', cursor: 'pointer' }}>Mark as read</button>
             )}
+          </div>
+        ))
+      )}
+    </div>
+  )}
           </span> |{' '}
           <span>Logged in as: {user.email} ({user.role})</span>{' '}
           <button onClick={handleLogout}>Logout</button>

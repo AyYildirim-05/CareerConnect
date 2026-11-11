@@ -23,6 +23,16 @@ class NotificationController {
       return res.status(500).json({ error: 'Failed to update notification.' });
     }
   }
+
+  static async clearAll(req, res) {
+    try {
+      await NotificationModel.clearAllForUser(req.user.id);
+      return res.status(200).json({ message: 'All notifications cleared.' });
+    } catch (error) {
+      console.error('Clear all notifications error:', error);
+      return res.status(500).json({ error: 'Failed to clear notifications.' });
+    }
+  }
 }
 
 module.exports = NotificationController;

@@ -51,6 +51,22 @@ class NotificationModel {
     await docRef.update({ read: true });
     return { id: doc.id, ...doc.data(), read: true };
   }
+
+  static async clearAllForUser(userId) {
+    const firestore = db.getFirestore();
+    if (!firestore) return;
+
+    const snapshot = await firestore
+      .collection(this.COLLECTION)
+      .where('userId', '==', String(userId))
+      .get();
+
+    if (snapshot.empty) return;
+
+    const batch = firestore.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }
 }
 
 module.exports = NotificationModel;

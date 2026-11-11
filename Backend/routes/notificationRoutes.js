@@ -7,5 +7,6 @@ router.use(authenticateToken);
 
 router.get('/', NotificationController.list);
 router.patch('/:id/read', NotificationController.markRead);
+router.delete('/', NotificationController.clearAll);
 
 module.exports = router;
