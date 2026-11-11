@@ -27,7 +27,10 @@ class JobPostingModel {
     if (!firestore) throw new Error('Firestore database is not initialized');
 
     const docRef = firestore.collection(this.COLLECTION).doc();
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    const expiresAtDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const jobData = {
       id: docRef.id,
@@ -36,9 +39,10 @@ class JobPostingModel {
       companyName: company.name,
       ...fields,
       status: publish ? this.STATUS_PUBLISHED : this.STATUS_DRAFT,
-      publishedAt: publish ? now : null,
-      created_at: now,
-      updated_at: now
+      publishedAt: publish ? nowIso : null,
+      expiresAt: expiresAtDate,
+      created_at: nowIso,
+      updated_at: nowIso
     };
 
     await docRef.set(jobData);

@@ -8,6 +8,11 @@ const resumeRoutes = require('./routes/resumeRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const DeadlineService = require('./services/deadlineService');
+
+
+
 
 const app = express();
 const PORT = process.env.PORT || 5500;
@@ -40,6 +45,8 @@ app.use('/api/companies', companyRoutes);
 
 // Conversation and Message Routes
 const messageRoutes = require('./routes/messageRoutes');
+// Notification Routes 
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/conversations', messageRoutes);
 // Profile Management Routes
 app.use('/api/profile', profileRoutes);
@@ -58,8 +65,13 @@ app.use((err, req, res, next) => {
 // Initialize DB and Start Server
 db.initDb()
   .then(() => {
+    // Run once immediately on startup for testing
+    DeadlineService.checkExpiringSavedJobs();
     app.listen(PORT, () => {
       console.log(`🚀 CareerConnect Backend Server running on http://localhost:${PORT}`);
+      setInterval(() => {
+        DeadlineService.checkExpiringSavedJobs();
+      }, 24 * 60 * 60 * 1000);
     });
   })
   .catch((err) => {
