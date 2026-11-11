@@ -24,7 +24,7 @@ class SavedJobModel {
     if (jobDoc.exists) {
       const job = jobDoc.data();
       
-      // Fallback: If expiresAt is missing (old job), compute it as 30 days from creation or now
+      //If expiresAt is missing (old job), compute it as 30 days
       let expirationIso = job.expiresAt;
       if (!expirationIso) {
         const baseDate = job.created_at ? new Date(job.created_at) : new Date();
@@ -37,7 +37,7 @@ class SavedJobModel {
       const diffTime = expirationDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      // Format the message based on your custom rule
+      // Format the message
       if (diffDays <= 3) {
         message = `expires SOON: ${diffDays > 0 ? diffDays : 0} days left for "${job.title}"!`;
       } else {
