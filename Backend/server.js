@@ -9,6 +9,7 @@ const jobRoutes = require('./routes/jobRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const mockInterviewRoutes = require('./routes/mockInterviewRoutes');
 const DeadlineService = require('./services/deadlineService');
 
 
@@ -50,6 +51,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/conversations', messageRoutes);
 // Profile Management Routes
 app.use('/api/profile', profileRoutes);
+// Automated Mock Interview Routes
+app.use('/api/mock-interviews', mockInterviewRoutes);
 
 // 404 Handler
 app.use((req, res) => {
