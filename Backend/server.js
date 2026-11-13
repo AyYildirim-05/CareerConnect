@@ -53,6 +53,7 @@ app.use('/api/conversations', messageRoutes);
 app.use('/api/profile', profileRoutes);
 // Automated Mock Interview Routes
 app.use('/api/mock-interviews', mockInterviewRoutes);
+app.use('/api/interviews', mockInterviewRoutes);   // additional route for interviews
 
 // 404 Handler
 app.use((req, res) => {

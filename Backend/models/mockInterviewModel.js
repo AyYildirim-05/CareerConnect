@@ -268,6 +268,38 @@ class MockInterviewModel {
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   }
+
+  static async _loadOwned(id, userId) {
+    const existing = await this.findById(id);
+    if (!existing) { const e = new Error('Mock interview session not found.'); e.statusCode = 404; throw e; }
+    if (userId && String(existing.user_id) !== String(userId)) { const e = new Error('Access denied.'); e.statusCode = 403; throw e; }
+    return existing;
+  }
+
+  static async saveEvaluation(id, userId, evaluation, transcriptHash) {
+    await this._loadOwned(id, userId);
+    const nowIso = new Date().toISOString();
+    const docRef = db.getFirestore().collection(this.COLLECTION).doc(String(id));
+    await docRef.update({ evaluation, evaluationHash: transcriptHash, evaluatedAt: nowIso, overallScore: evaluation.overallScore, updated_at: nowIso });
+    const doc = await docRef.get();
+    return { id: doc.id, ...doc.data() };
+  }
+
+  static async setSavedToDashboard(id, userId, saved) {
+    const existing = await this._loadOwned(id, userId);
+    if (!existing.evaluation) { const e = new Error('Evaluate this interview before saving its critique.'); e.statusCode = 400; throw e; }
+    const docRef = db.getFirestore().collection(this.COLLECTION).doc(String(id));
+    await docRef.update({ savedToDashboard: Boolean(saved), updated_at: new Date().toISOString() });
+    const doc = await docRef.get();
+    return { id: doc.id, ...doc.data() };
+  }
+
+  static async findSavedEvaluationsByUser(userId) {
+    const all = await this.findByUser(userId);
+    return all
+      .filter((i) => i.evaluation && i.savedToDashboard)
+      .sort((a, b) => (b.evaluatedAt || '').localeCompare(a.evaluatedAt || ''));
+  }
 }
 
 module.exports = MockInterviewModel;

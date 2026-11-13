@@ -39,3 +39,13 @@ export function fetchMockInterviewsByJob(jobId, token) {
     method: 'GET'
   });
 }
+
+export function evaluateMockInterview(interviewId, token, options = {}) {
+  return apiRequest(`/interviews/${interviewId}/evaluate`, token, { method: 'POST', body: { force: Boolean(options.force) } });
+}
+export function setEvaluationSaved(interviewId, saved, token) {
+  return apiRequest(`/interviews/${interviewId}/evaluation/save`, token, { method: 'PATCH', body: { saved } });
+}
+export function fetchSavedEvaluations(token) {
+  return apiRequest('/interviews/evaluations/saved', token);
+}

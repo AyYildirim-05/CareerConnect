@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ResumeUpload from "./ResumeUpload";
 import ResumeFeedbackCard from "./ResumeFeedbackCard";
+import SavedCritiques from "./SavedCritiques";
 
 export default function Dashboard() {
   const { user, company } = useAuth();
@@ -28,6 +29,7 @@ export default function Dashboard() {
         </ul>
             <ResumeUpload />
             <ResumeFeedbackCard />
+            <SavedCritiques />
       </div>
       ) : (
         <ul>

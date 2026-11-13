@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  startMockInterview,
-  saveMockInterviewTranscript
-} from '../services/mockInterviewService';
+import { startMockInterview, 
+  saveMockInterviewTranscript, 
+  evaluateMockInterview, 
+  setEvaluationSaved 
+} 
+from '../services/mockInterviewService';
+import MockInterviewScorecard from './MockInterviewScorecard';
+
 
 /**
  * MockInterviewModal (Task 11.3)
@@ -21,6 +25,13 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const [error, setError] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const [showHint, setShowHint] = useState(true);
+
+  // Evaluation state
+  const [evaluation, setEvaluation] = useState(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [savingCritique, setSavingCritique] = useState(false);
+  const [savedToDashboard, setSavedToDashboard] = useState(false);
+
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -51,6 +62,28 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
     setIsRecording(false);
   };
 
+  // Evaluate the completed mock interview session and generate a critique
+  const handleEvaluate = async (force = false) => {
+  if (!interview?.id) return;
+  setEvaluating(true); setError('');
+  try {
+    const res = await evaluateMockInterview(interview.id, token, { force });
+    setEvaluation(res.evaluation);
+    setInterview(res.interview);
+  } catch (err) {
+    setError(err.error || err.message || 'Failed to evaluate your interview.');
+  } finally { setEvaluating(false); }
+};
+const handleToggleSaveCritique = async () => {
+  setSavingCritique(true);
+  try {
+    const res = await setEvaluationSaved(interview.id, !savedToDashboard, token);
+    setSavedToDashboard(res.saved);
+  } catch (err) {
+    setError(err.error || err.message || 'Failed to update saved critique.');
+  } finally { setSavingCritique(false); }
+};
+
   // Load or generate the 5-question mock interview session when modal opens
   const loadInterviewSession = async (forceNew = false) => {
     if (!job || !job.id || !token) return;
@@ -63,6 +96,10 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
       const res = await startMockInterview(job.id, token, { forceNew });
       if (res && res.interview) {
         setInterview(res.interview);
+        // Reset evaluation state for new or resumed session
+        setEvaluation(res.interview.evaluation || null);
+        setSavedToDashboard(Boolean(res.interview.savedToDashboard));
+        // Initialize responses and response modes from the transcript if available
         const initialResponses = {};
         const initialModes = {};
         let firstUnansweredIdx = 0;
@@ -454,6 +491,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                   >
                     Edit Responses
                   </button>
+                  
                   <button
                     type="button"
                     onClick={() => loadInterviewSession(true)}
@@ -531,6 +569,20 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                     </div>
                   );
                 })}
+                {evaluation && (
+                  <div style={{ marginTop: '1.5rem' }}>
+                    <h3 style={{ margin: '0 0 0.75rem', color: '#0f172a' }}>AI Evaluation Scorecard</h3>
+                    <MockInterviewScorecard
+                      interview={interview}
+                        evaluation={evaluation}
+                        saved={savedToDashboard}
+                        saving={savingCritique}
+                        evaluating={evaluating}
+                        onToggleSave={handleToggleSaveCritique}
+                        onReEvaluate={() => handleEvaluate(true)}
+                      />
+                    </div> 
+                )}
               </div>
             </div>
           ) : currentQuestion ? (
