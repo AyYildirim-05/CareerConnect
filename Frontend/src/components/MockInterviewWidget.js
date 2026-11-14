@@ -36,7 +36,7 @@ export default function MockInterviewWidget({ job }) {
           boxShadow: '0 1px 3px rgba(15, 23, 42, 0.15)'
         }}
       >
-        <span>🎤 Start Mock Interview</span>
+        <span>Start Mock Interview</span>
       </button>
 
       <MockInterviewModal

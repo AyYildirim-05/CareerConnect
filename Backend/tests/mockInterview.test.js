@@ -170,7 +170,7 @@ test('Task 11.1 & 11.3: MockInterviewController starts interview and saves seque
         singleAnswer: {
           questionNumber: 4,
           response: 'Situation: Production outage. Task: Restore API. Action: Rolled back bad migration. Result: Zero data loss.',
-          responseMode: 'voice'
+          responseMode: 'text'
         }
       }
     };
@@ -180,7 +180,7 @@ test('Task 11.1 & 11.3: MockInterviewController starts interview and saves seque
 
     assert.strictEqual(saveRes.statusCode, 200);
     assert.strictEqual(saveRes.data.success, true);
-    assert.strictEqual(saveRes.data.interview.transcript[3].responseMode, 'voice');
+    assert.strictEqual(saveRes.data.interview.transcript[3].responseMode, 'text');
     assert.ok(saveRes.data.interview.transcript[3].response.includes('Situation: Production outage'));
   } finally {
     MockInterviewService._callGeminiApi = origCallGemini;

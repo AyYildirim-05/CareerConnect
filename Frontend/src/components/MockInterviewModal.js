@@ -1,25 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { startMockInterview, 
-  saveMockInterviewTranscript, 
-  evaluateMockInterview, 
-  setEvaluationSaved 
-} 
-from '../services/mockInterviewService';
+import React, { useState, useEffect } from 'react';
+import {
+  startMockInterview,
+  saveMockInterviewTranscript,
+  evaluateMockInterview,
+  setEvaluationSaved
+} from '../services/mockInterviewService';
 import MockInterviewScorecard from './MockInterviewScorecard';
-
 
 /**
  * MockInterviewModal (Task 11.3)
  * Interactive pop-up modal page providing a step-by-step mock interview session
  * with 5 tailored questions (3 technical/role-specific + 2 behavioral STAR method)
- * where the job seeker types or records responses sequentially in an interactive prompt card.
+ * where the job seeker types written responses sequentially in an interactive prompt card.
  */
 export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const [interview, setInterview] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState({});
-  const [responseModes, setResponseModes] = useState({});
-  const [audioUrls, setAudioUrls] = useState({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -32,62 +29,37 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const [savingCritique, setSavingCritique] = useState(false);
   const [savedToDashboard, setSavedToDashboard] = useState(false);
 
-
-  // Voice recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [recordingNotice, setRecordingNotice] = useState('');
-
-  const recognitionRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const timerRef = useRef(null);
-
-  const stopAllRecording = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (_) {}
-      recognitionRef.current = null;
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch (_) {}
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    setIsRecording(false);
-  };
-
   // Evaluate the completed mock interview session and generate a critique
   const handleEvaluate = async (force = false) => {
-  if (!interview?.id) return;
-  setEvaluating(true); setError('');
-  try {
-    const res = await evaluateMockInterview(interview.id, token, { force });
-    setEvaluation(res.evaluation);
-    setInterview(res.interview);
-  } catch (err) {
-    setError(err.error || err.message || 'Failed to evaluate your interview.');
-  } finally { setEvaluating(false); }
-};
-const handleToggleSaveCritique = async () => {
-  setSavingCritique(true);
-  try {
-    const res = await setEvaluationSaved(interview.id, !savedToDashboard, token);
-    setSavedToDashboard(res.saved);
-  } catch (err) {
-    setError(err.error || err.message || 'Failed to update saved critique.');
-  } finally { setSavingCritique(false); }
-};
+    if (!interview?.id) return;
+    setEvaluating(true);
+    setError('');
+    try {
+      const res = await evaluateMockInterview(interview.id, token, { force });
+      setEvaluation(res.evaluation);
+      setInterview(res.interview);
+    } catch (err) {
+      setError(err.error || err.message || 'Failed to evaluate your interview.');
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  const handleToggleSaveCritique = async () => {
+    setSavingCritique(true);
+    try {
+      const res = await setEvaluationSaved(interview.id, !savedToDashboard, token);
+      setSavedToDashboard(res.saved);
+    } catch (err) {
+      setError(err.error || err.message || 'Failed to update saved critique.');
+    } finally {
+      setSavingCritique(false);
+    }
+  };
 
   // Load or generate the 5-question mock interview session when modal opens
   const loadInterviewSession = async (forceNew = false) => {
     if (!job || !job.id || !token) return;
-    stopAllRecording();
     setLoading(true);
     setError('');
     setShowSummary(false);
@@ -101,14 +73,12 @@ const handleToggleSaveCritique = async () => {
         setSavedToDashboard(Boolean(res.interview.savedToDashboard));
         // Initialize responses and response modes from the transcript if available
         const initialResponses = {};
-        const initialModes = {};
         let firstUnansweredIdx = 0;
         let foundUnanswered = false;
 
         (res.interview.transcript || []).forEach((entry, idx) => {
           const qNum = Number(entry.questionNumber || idx + 1);
           initialResponses[qNum] = entry.response || '';
-          initialModes[qNum] = entry.responseMode || 'text';
           if (!foundUnanswered && (!entry.response || !entry.response.trim())) {
             firstUnansweredIdx = idx;
             foundUnanswered = true;
@@ -116,7 +86,6 @@ const handleToggleSaveCritique = async () => {
         });
 
         setResponses(initialResponses);
-        setResponseModes(initialModes);
         setCurrentIndex(foundUnanswered ? firstUnansweredIdx : 0);
       }
     } catch (err) {
@@ -129,12 +98,7 @@ const handleToggleSaveCritique = async () => {
   useEffect(() => {
     if (isOpen) {
       loadInterviewSession(false);
-    } else {
-      stopAllRecording();
     }
-    return () => {
-      stopAllRecording();
-    };
   }, [isOpen, job?.id]);
 
   if (!isOpen) return null;
@@ -151,115 +115,11 @@ const handleToggleSaveCritique = async () => {
       ...prev,
       [currentQNum]: val
     }));
-    if (!responseModes[currentQNum]) {
-      setResponseModes((prev) => ({ ...prev, [currentQNum]: 'text' }));
-    }
-  };
-
-  // Toggle voice recording (Web Speech API live transcription + MediaRecorder audio capture)
-  const handleToggleRecording = async () => {
-    setRecordingNotice('');
-
-    if (isRecording) {
-      stopAllRecording();
-      return;
-    }
-
-    const qNumAtStart = currentQNum;
-    setIsRecording(true);
-    setRecordingSeconds(0);
-    setResponseModes((prev) => ({ ...prev, [qNumAtStart]: 'voice' }));
-
-    timerRef.current = setInterval(() => {
-      setRecordingSeconds((sec) => sec + 1);
-    }, 1000);
-
-    // 1. SpeechRecognition for live voice-to-text into the prompt card
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-
-        recognition.onresult = (event) => {
-          let newTranscriptChunk = '';
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            if (event.results[i].isFinal) {
-              newTranscriptChunk += `${event.results[i][0].transcript.trim()} `;
-            }
-          }
-          if (newTranscriptChunk.trim()) {
-            setResponses((prev) => {
-              const existing = (prev[qNumAtStart] || '').trim();
-              return {
-                ...prev,
-                [qNumAtStart]: existing ? `${existing} ${newTranscriptChunk.trim()}` : newTranscriptChunk.trim()
-              };
-            });
-          }
-        };
-
-        recognition.onerror = () => {
-          // Keep audio recorder running if available
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      } catch (_) {}
-    }
-
-    // 2. MediaRecorder for voice audio capture
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        audioChunksRef.current = [];
-
-        mediaRecorder.ondataavailable = (evt) => {
-          if (evt.data && evt.data.size > 0) {
-            audioChunksRef.current.push(evt.data);
-          }
-        };
-
-        mediaRecorder.onstop = () => {
-          stream.getTracks().forEach((track) => track.stop());
-          if (audioChunksRef.current.length > 0) {
-            const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            const url = URL.createObjectURL(blob);
-            setAudioUrls((prev) => ({ ...prev, [qNumAtStart]: url }));
-            setResponses((prev) => {
-              const existing = (prev[qNumAtStart] || '').trim();
-              if (!existing) {
-                return {
-                  ...prev,
-                  [qNumAtStart]: '[Voice Response Recorded]'
-                };
-              }
-              return prev;
-            });
-          }
-        };
-
-        mediaRecorder.start();
-        mediaRecorderRef.current = mediaRecorder;
-      } catch (micErr) {
-        if (!SpeechRecognition) {
-          stopAllRecording();
-          setRecordingNotice('Microphone access is unavailable in this browser. Please type your response below.');
-        }
-      }
-    } else if (!SpeechRecognition) {
-      stopAllRecording();
-      setRecordingNotice('Voice recording is not supported in this browser. Please type your response below.');
-    }
   };
 
   // Persist current question response to backend
   const persistCurrentAnswer = async (nextStatus = undefined) => {
     if (!interview || !interview.id) return;
-    stopAllRecording();
     setSaving(true);
     setError('');
 
@@ -275,7 +135,7 @@ const handleToggleSaveCritique = async () => {
           focusArea: q.focusArea,
           question: q.question,
           response: answerText,
-          responseMode: responseModes[qNum] || 'text'
+          responseMode: 'text'
         };
       });
 
@@ -313,12 +173,6 @@ const handleToggleSaveCritique = async () => {
     return Boolean((responses[qNum] || '').trim());
   }).length;
 
-  const formatTimer = (secs) => {
-    const mins = Math.floor(secs / 60);
-    const rem = secs % 60;
-    return `${mins}:${rem < 10 ? '0' : ''}${rem}`;
-  };
-
   return (
     <div
       role="dialog"
@@ -326,7 +180,6 @@ const handleToggleSaveCritique = async () => {
       aria-labelledby="mock-interview-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          stopAllRecording();
           onClose();
         }
       }}
@@ -399,10 +252,7 @@ const handleToggleSaveCritique = async () => {
 
           <button
             type="button"
-            onClick={() => {
-              stopAllRecording();
-              onClose();
-            }}
+            onClick={onClose}
             aria-label="Close Mock Interview Modal"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.12)',
@@ -559,13 +409,8 @@ const handleToggleSaveCritique = async () => {
                           whiteSpace: 'pre-wrap'
                         }}
                       >
-                        {ans || 'No response recorded for this question.'}
+                        {ans || 'No written response submitted for this question.'}
                       </div>
-                      {audioUrls[qNum] && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <audio controls src={audioUrls[qNum]} style={{ height: '32px', width: '100%' }} />
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -808,53 +653,15 @@ const handleToggleSaveCritique = async () => {
                   </div>
                 )}
 
-                {/* Response Controls: Type or Record */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '0.5rem',
-                    marginBottom: '0.5rem'
-                  }}
-                >
+                {/* Written Response Input */}
+                <div style={{ marginBottom: '0.5rem' }}>
                   <label
                     htmlFor={`mock-interview-response-${currentQNum}`}
                     style={{ fontWeight: '600', fontSize: '0.88rem', color: '#1e293b' }}
                   >
-                    Your Response (Type or Record Voice):
+                    Your Written Response:
                   </label>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={handleToggleRecording}
-                      style={{
-                        backgroundColor: isRecording ? '#dc2626' : '#0f172a',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.4rem 0.8rem',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem'
-                      }}
-                    >
-                      <span>{isRecording ? '⏹ Stop Recording' : '🎙 Record Response'}</span>
-                      {isRecording && <span>({formatTimer(recordingSeconds)})</span>}
-                    </button>
-                  </div>
                 </div>
-
-                {recordingNotice && (
-                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#b45309' }}>
-                    {recordingNotice}
-                  </p>
-                )}
 
                 <textarea
                   id={`mock-interview-response-${currentQNum}`}
@@ -863,8 +670,8 @@ const handleToggleSaveCritique = async () => {
                   onChange={handleTextChange}
                   placeholder={
                     isTechnical
-                      ? 'Type your technical explanation here, or click "Record Response" to answer aloud...'
-                      : 'Structure your response using Situation, Task, Action, and Result (STAR), or click "Record Response"...'
+                      ? 'Type your technical explanation here...'
+                      : 'Structure your written response using Situation, Task, Action, and Result (STAR)...'
                   }
                   style={{
                     width: '100%',
@@ -878,15 +685,6 @@ const handleToggleSaveCritique = async () => {
                     resize: 'vertical'
                   }}
                 />
-
-                {audioUrls[currentQNum] && (
-                  <div style={{ marginTop: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>
-                      Recorded Audio:
-                    </span>
-                    <audio controls src={audioUrls[currentQNum]} style={{ height: '32px', flex: 1 }} />
-                  </div>
-                )}
               </div>
             </div>
           ) : null}

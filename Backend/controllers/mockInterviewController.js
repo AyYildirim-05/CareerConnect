@@ -6,7 +6,7 @@ const MockInterviewService = require('../services/mockInterviewService');
  * MockInterviewController (Tasks 11.1, 11.2, 11.3)
  * Handles starting an automated mock interview session for a job posting,
  * persisting the 5 generated questions (3 technical + 2 behavioral STAR) in `mock_interviews`,
- * and saving the Job Seeker's sequential typed or recorded responses.
+ * and saving the Job Seeker's sequential written responses.
  */
 class MockInterviewController {
   /**
@@ -90,7 +90,7 @@ class MockInterviewController {
 
   /**
    * PUT /api/mock-interviews/:interviewId
-   * Saves sequential responses (typed or recorded) to the interview transcript.
+   * Saves sequential written responses to the interview transcript.
    */
   static async saveTranscript(req, res) {
     try {

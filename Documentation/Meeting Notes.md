@@ -9,3 +9,4 @@
 | 26 octobre | 75 mins | Meeting before submission two. Checking if all requirements are met and writing the submission document. |
 | 29 octobre | 25 mins | Task distribution for sprint 3. Discussed the details of certain user stories. Decided to create a front end user story.|
 | 5 november | 25 mins | Discussed the progress of everyones user stories. |
+| 12 november| 35 mins|  The current state of the project: the frontend, everyone's individual progress. Who is available to do some new user stories. |

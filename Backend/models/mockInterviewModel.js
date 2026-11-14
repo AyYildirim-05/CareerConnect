@@ -74,7 +74,7 @@ class MockInterviewModel {
         hint: q.hint || '',
         starGuide: q.starGuide || null,
         response: responseText,
-        responseMode: prev.responseMode || 'text',
+        responseMode: 'text',
         answeredAt: responseText.trim() ? (prev.answeredAt || new Date().toISOString()) : null
       };
     });
@@ -201,7 +201,7 @@ class MockInterviewModel {
           return {
             ...entry,
             response: responseText,
-            responseMode: singleAnswer.responseMode || entry.responseMode || 'text',
+            responseMode: 'text',
             answeredAt: responseText.trim() ? nowIso : null
           };
         }
