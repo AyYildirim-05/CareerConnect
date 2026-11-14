@@ -2,16 +2,99 @@ import React, { useState } from 'react';
 import { exportJsonFile } from '../services/resumeService';
 
 const CRITERIA = [
-  { key: 'clarity', label: 'Clarity', hint: 'How organized and easy to follow your answers were' },
-  { key: 'relevance', label: 'Relevance', hint: 'How directly you addressed the question and role' },
-  { key: 'technicalDepth', label: 'Technical Depth', hint: 'Specifics, trade-offs, STAR detail and measurable impact' }
+  {
+    key: 'clarity',
+    label: 'Clarity',
+    weight: '33.3%',
+    hint: 'How organized, concise, and easy to follow your answers were (3–5 clear sentences).'
+  },
+  {
+    key: 'relevance',
+    label: 'Relevance',
+    weight: '33.3%',
+    hint: 'How directly you addressed the question prompt, focus area, and target role requirements.'
+  },
+  {
+    key: 'technicalDepth',
+    label: 'Technical Depth / STAR',
+    weight: '33.3%',
+    hint: 'Specific tools, trade-offs, and metrics for technical prompts; full Situation-Task-Action-Result coverage for behavioral.'
+  }
 ];
+
+export const GRADING_BANDS = [
+  {
+    grade: 'A',
+    range: '85 – 100',
+    rating: 'Excellent',
+    criteria: 'Clear structure, directly addresses role requirements, names concrete tools/trade-offs or all 4 STAR steps with measurable impact.'
+  },
+  {
+    grade: 'B',
+    range: '70 – 84',
+    rating: 'Strong',
+    criteria: 'Well-organized and relevant answer with solid domain understanding; minor room for deeper metrics or trade-off comparisons.'
+  },
+  {
+    grade: 'C',
+    range: '50 – 69',
+    rating: 'Developing',
+    criteria: 'Partially answers the prompt but lacks depth, trade-offs, or complete STAR steps. Scores below 60 unlock a tailored AI Better Answer.'
+  },
+  {
+    grade: 'D / F',
+    range: '0 – 49',
+    rating: 'Needs Work',
+    criteria: 'Very brief (<30 words), off-topic, or unanswered (0/100). Requires structured expansion and concrete examples.'
+  }
+];
+
+export function getLetterGrade(score) {
+  const n = Number(score) || 0;
+  if (n >= 85) return 'A';
+  if (n >= 70) return 'B';
+  if (n >= 50) return 'C';
+  if (n >= 35) return 'D';
+  return 'F';
+}
 
 // Same thresholds as CompatibilityProgressBadge so the app looks consistent
 function getTheme(score) {
   if (score >= 75) return { bar: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' };
   if (score >= 45) return { bar: '#d97706', bg: '#fffbeb', border: '#fde68a', text: '#b45309' };
   return { bar: '#dc2626', bg: '#fef2f2', border: '#fecaca', text: '#b91c1c' };
+}
+
+/**
+ * GradingSchematicPanel
+ * Displays the structured grading schematic (criteria weights + score tiers/letter grades)
+ * for the mock interview questionnaire.
+ */
+export function GradingSchematicPanel() {
+  return (
+    <div>
+      <h4>Mock Interview Grading Schematic (100-Point Rubric)</h4>
+      <p>
+        Each question is scored from 0–100 across 3 equal criteria. Questions scoring below 60/100 automatically receive a tailored model answer.
+      </p>
+
+      <ul>
+        {CRITERIA.map((c) => (
+          <li key={c.key}>
+            <strong>{c.label} (Weight: {c.weight}):</strong> {c.hint}
+          </li>
+        ))}
+      </ul>
+
+      <ul>
+        {GRADING_BANDS.map((b) => (
+          <li key={b.grade}>
+            <strong>Grade {b.grade} · {b.rating} ({b.range} pts):</strong> {b.criteria}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function ScoreBar({ label, score, hint, rating }) {
@@ -96,9 +179,11 @@ export default function MockInterviewScorecard({
   onReEvaluate
 }) {
   const [openQ, setOpenQ] = useState(null);
+  const [showSchematic, setShowSchematic] = useState(false);
   if (!evaluation) return null;
 
   const overall = getTheme(evaluation.overallScore);
+  const overallLetter = getLetterGrade(evaluation.overallScore);
   const slug = (interview?.jobTitle || 'session').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
   const answers = {};
   (interview?.transcript || []).forEach((e) => { answers[e.questionNumber] = e.response; });
@@ -112,7 +197,7 @@ export default function MockInterviewScorecard({
         <div style={{ flex: '0 0 190px', textAlign: 'center', padding: '1rem', borderRadius: 12, backgroundColor: overall.bg, border: `1px solid ${overall.border}` }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: overall.text, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Overall Score</div>
           <div style={{ fontSize: '3rem', fontWeight: 800, color: overall.text, lineHeight: 1.1 }}>{evaluation.overallScore}</div>
-          <div style={{ fontSize: '0.8rem', color: overall.text, fontWeight: 600 }}>out of 100 · {evaluation.rating}</div>
+          <div style={{ fontSize: '0.8rem', color: overall.text, fontWeight: 600 }}>Grade {overallLetter} · {evaluation.rating}</div>
           <div
             role="progressbar"
             aria-valuenow={evaluation.overallScore}
@@ -127,9 +212,20 @@ export default function MockInterviewScorecard({
 
         <div style={{ flex: '1 1 280px' }}>
           {CRITERIA.map((c) => (
-            <ScoreBar key={c.key} label={c.label} hint={c.hint} score={evaluation.criteria[c.key].score} rating={evaluation.criteria[c.key].rating} />
+            <ScoreBar key={c.key} label={`${c.label} (${c.weight})`} hint={c.hint} score={evaluation.criteria[c.key].score} rating={evaluation.criteria[c.key].rating} />
           ))}
         </div>
+      </div>
+
+      {/* Collapsible Grading Schematic inside Scorecard */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSchematic((prev) => !prev)}
+        >
+          {showSchematic ? 'Hide Grading Schematic' : 'View Grading Schematic & Score Rubric'}
+        </button>
+        {showSchematic && <GradingSchematicPanel />}
       </div>
 
       {evaluation.summary && <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: '#334155', lineHeight: 1.55 }}>{evaluation.summary}</p>}
@@ -145,6 +241,7 @@ export default function MockInterviewScorecard({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
         {(evaluation.questionFeedback || []).map((q) => {
           const t = getTheme(q.overall);
+          const qGrade = getLetterGrade(q.overall);
           const isOpen = openQ === q.questionNumber;
           return (
             <div key={q.questionNumber} style={{ border: '1px solid #e2e8f0', borderRadius: 10, backgroundColor: '#f8fafc' }}>
@@ -159,7 +256,7 @@ export default function MockInterviewScorecard({
                   <span style={{ display: 'block', fontWeight: 400, color: '#475569', marginTop: 2 }}>{q.question}</span>
                 </span>
                 <span style={{ whiteSpace: 'nowrap', fontSize: '0.78rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: 999, backgroundColor: t.bg, color: t.text, border: `1px solid ${t.border}` }}>
-                  {q.overall}/100 {isOpen ? '▲' : '▼'}
+                  Grade {qGrade} · {q.overall}/100 {isOpen ? '▲' : '▼'}
                 </span>
               </button>
 

@@ -276,6 +276,78 @@ class MockInterviewModel {
     return existing;
   }
 
+  /**
+   * Append a new question (custom or AI-generated) to an existing mock interview questionnaire
+   * @param {string} id
+   * @param {string} userId
+   * @param {Object} questionObj
+   * @returns {Promise<Object>}
+   */
+  static async addQuestion(id, userId, questionObj = {}) {
+    const existing = await this._loadOwned(id, userId);
+    const existingQuestions = Array.isArray(existing.questions) ? [...existing.questions] : [];
+    const nextNumber = existingQuestions.length + 1;
+
+    const category = String(questionObj.category || 'technical').toLowerCase() === 'behavioral'
+      ? 'behavioral'
+      : 'technical';
+    const framework = category === 'behavioral' ? 'STAR' : 'Role-Specific';
+    const questionText = String(questionObj.question || '').trim();
+
+    if (!questionText) {
+      const err = new Error('Question text is required to add a new question.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const defaultStarGuide = {
+      situation: 'Set the scene and provide relevant context from a past project or team environment.',
+      task: 'Describe your specific responsibility, goal, or obstacle that needed to be resolved.',
+      action: 'Explain the concrete steps, technical decisions, or communication actions you personally took.',
+      result: 'Highlight the outcome, measurable impact, and what you learned from the experience.'
+    };
+
+    const normalizedQuestion = {
+      id: `q_${nextNumber}`,
+      questionNumber: nextNumber,
+      category,
+      framework,
+      focusArea: String(
+        questionObj.focusArea || (category === 'behavioral' ? 'Behavioral (STAR Method)' : `Technical Competency #${nextNumber}`)
+      ).trim(),
+      question: questionText,
+      hint: String(
+        questionObj.hint ||
+          (category === 'behavioral'
+            ? 'Use the STAR method (Situation, Task, Action, Result) to structure a clear, concrete example with measurable impact.'
+            : 'Walk through your technical reasoning, trade-offs, and practical implementation details.')
+      ).trim(),
+      starGuide: category === 'behavioral'
+        ? {
+            situation: String(questionObj.starGuide?.situation || defaultStarGuide.situation).trim(),
+            task: String(questionObj.starGuide?.task || defaultStarGuide.task).trim(),
+            action: String(questionObj.starGuide?.action || defaultStarGuide.action).trim(),
+            result: String(questionObj.starGuide?.result || defaultStarGuide.result).trim()
+          }
+        : null
+    };
+
+    const updatedQuestions = [...existingQuestions, normalizedQuestion];
+    const updatedTranscript = this.buildTranscriptEntries(updatedQuestions, existing.transcript || []);
+    const nowIso = new Date().toISOString();
+
+    const docRef = db.getFirestore().collection(this.COLLECTION).doc(String(id));
+    await docRef.update({
+      questions: updatedQuestions,
+      transcript: updatedTranscript,
+      status: this.STATUS_IN_PROGRESS,
+      updated_at: nowIso
+    });
+
+    const doc = await docRef.get();
+    return { id: doc.id, ...doc.data() };
+  }
+
   static async saveEvaluation(id, userId, evaluation, transcriptHash) {
     await this._loadOwned(id, userId);
     const nowIso = new Date().toISOString();

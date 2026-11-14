@@ -45,7 +45,7 @@ class MockInterviewController {
       if (!forceNew && job) {
         const existingSessions = await MockInterviewModel.findByUserAndJob(userId, resolvedJobId);
         const activeSession = existingSessions.find(
-          (s) => s.status === MockInterviewModel.STATUS_IN_PROGRESS && Array.isArray(s.questions) && s.questions.length === 5
+          (s) => s.status === MockInterviewModel.STATUS_IN_PROGRESS && Array.isArray(s.questions) && s.questions.length >= 5
         );
         if (activeSession) {
           return res.status(200).json({
@@ -170,6 +170,70 @@ class MockInterviewController {
       return res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch mock interview history.'
+      });
+    }
+  }
+
+  /**
+   * POST /api/mock-interviews/:interviewId/questions
+   * Adds a new question (either AI-generated or custom user-defined) to the questionnaire.
+   */
+  static async addQuestion(req, res) {
+    try {
+      const { interviewId } = req.params;
+      const userId = req.user?.id;
+      const { question, category = 'technical', focusArea = '', hint = '', generate = false } = req.body || {};
+
+      const existing = await MockInterviewModel.findById(interviewId);
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          error: 'Mock interview session not found.'
+        });
+      }
+
+      if (userId && String(existing.user_id) !== String(userId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied.'
+        });
+      }
+
+      let questionToAdd = null;
+      if (generate || !question || !String(question).trim()) {
+        const job = existing.job_id ? await JobPostingModel.findById(existing.job_id) : null;
+        const generated = await MockInterviewService.generateAdditionalQuestion({
+          job,
+          title: existing.jobTitle || job?.title || 'Target Role',
+          companyName: existing.companyName || job?.companyName || '',
+          job_description: job?.description || existing.jobTitle || 'Software Engineering Role',
+          requirements: job?.requirements || '',
+          category,
+          existingQuestions: existing.questions || []
+        });
+        questionToAdd = generated.question;
+      } else {
+        questionToAdd = {
+          question: String(question).trim(),
+          category,
+          focusArea: String(focusArea || '').trim(),
+          hint: String(hint || '').trim()
+        };
+      }
+
+      const updated = await MockInterviewModel.addQuestion(interviewId, userId, questionToAdd);
+      const addedQuestion = updated.questions[updated.questions.length - 1];
+
+      return res.status(201).json({
+        success: true,
+        question: addedQuestion,
+        interview: updated
+      });
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return res.status(statusCode).json({
+        success: false,
+        error: error.message || 'Failed to add new question to mock interview.'
       });
     }
   }

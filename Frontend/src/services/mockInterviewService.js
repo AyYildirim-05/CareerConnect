@@ -40,6 +40,20 @@ export function fetchMockInterviewsByJob(jobId, token) {
   });
 }
 
+/**
+ * Add a new question (either AI-generated or custom user-defined) to the mock interview questionnaire
+ * @param {string} interviewId
+ * @param {Object} payload - { generate?: boolean, category?: 'technical' | 'behavioral', question?: string, focusArea?: string, hint?: string }
+ * @param {string} token
+ * @returns {Promise<{ success: boolean, question: Object, interview: Object }>}
+ */
+export function addMockInterviewQuestion(interviewId, payload, token) {
+  return apiRequest(`/mock-interviews/${interviewId}/questions`, token, {
+    method: 'POST',
+    body: payload
+  });
+}
+
 export function evaluateMockInterview(interviewId, token, options = {}) {
   return apiRequest(`/interviews/${interviewId}/evaluate`, token, { method: 'POST', body: { force: Boolean(options.force) } });
 }

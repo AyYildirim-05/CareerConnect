@@ -24,6 +24,7 @@ router.get('/:interviewId', MockInterviewController.getSessionById);
 // Save/update sequential responses (transcript) for a mock interview session
 router.put('/:interviewId', MockInterviewController.saveTranscript);
 
-
+// Add a new question (AI-generated or custom) to an existing mock interview session
+router.post('/:interviewId/questions', MockInterviewController.addQuestion);
 
 module.exports = router;

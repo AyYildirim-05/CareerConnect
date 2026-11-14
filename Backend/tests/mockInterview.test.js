@@ -182,6 +182,44 @@ test('Task 11.1 & 11.3: MockInterviewController starts interview and saves seque
     assert.strictEqual(saveRes.data.success, true);
     assert.strictEqual(saveRes.data.interview.transcript[3].responseMode, 'text');
     assert.ok(saveRes.data.interview.transcript[3].response.includes('Situation: Production outage'));
+
+    // Add a custom question
+    const addCustomReq = {
+      params: { interviewId },
+      user: { id: 'user_seeker_1', role: 'Job Seeker' },
+      body: {
+        category: 'technical',
+        focusArea: 'Distributed Caching',
+        question: 'How would you handle cache stampedes in a Redis-backed microservice?',
+        hint: 'Discuss mutex locks, jittered TTLs, and stale-while-revalidate.'
+      }
+    };
+    const addCustomRes = createMockRes();
+    await MockInterviewController.addQuestion(addCustomReq, addCustomRes);
+
+    assert.strictEqual(addCustomRes.statusCode, 201);
+    assert.strictEqual(addCustomRes.data.success, true);
+    assert.strictEqual(addCustomRes.data.interview.questions.length, 6);
+    assert.strictEqual(addCustomRes.data.interview.transcript.length, 6);
+    assert.strictEqual(addCustomRes.data.question.questionNumber, 6);
+
+    // Generate an additional behavioral STAR question (Q7)
+    const addGenReq = {
+      params: { interviewId },
+      user: { id: 'user_seeker_1', role: 'Job Seeker' },
+      body: {
+        generate: true,
+        category: 'behavioral'
+      }
+    };
+    const addGenRes = createMockRes();
+    await MockInterviewController.addQuestion(addGenReq, addGenRes);
+
+    assert.strictEqual(addGenRes.statusCode, 201);
+    assert.strictEqual(addGenRes.data.interview.questions.length, 7);
+    assert.strictEqual(addGenRes.data.question.category, 'behavioral');
+    assert.strictEqual(addGenRes.data.question.framework, 'STAR');
+    assert.ok(addGenRes.data.question.starGuide);
   } finally {
     MockInterviewService._callGeminiApi = origCallGemini;
     if (origApiKey === undefined) {

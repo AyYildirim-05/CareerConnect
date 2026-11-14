@@ -2,16 +2,20 @@ import React, { useState, useEffect } from 'react';
 import {
   startMockInterview,
   saveMockInterviewTranscript,
+  addMockInterviewQuestion,
   evaluateMockInterview,
   setEvaluationSaved
 } from '../services/mockInterviewService';
-import MockInterviewScorecard from './MockInterviewScorecard';
+import MockInterviewScorecard, {
+  GradingSchematicPanel,
+  getLetterGrade
+} from './MockInterviewScorecard';
 
 /**
- * MockInterviewModal (Task 11.3)
- * Interactive pop-up modal page providing a step-by-step mock interview session
- * with 5 tailored questions (3 technical/role-specific + 2 behavioral STAR method)
- * where the job seeker types written responses sequentially in an interactive prompt card.
+ * MockInterviewModal
+ * Interactive pop-up modal page providing a step-by-step mock interview questionnaire
+ * with tailored questions (technical/role-specific + behavioral STAR method),
+ * ability to add new AI-generated or custom questions, and a 100-point grading schematic.
  */
 export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const [interview, setInterview] = useState(null);
@@ -22,6 +26,15 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const [error, setError] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const [showHint, setShowHint] = useState(true);
+  const [showGradingSchematic, setShowGradingSchematic] = useState(false);
+
+  // Add New Question state
+  const [showAddQuestionPanel, setShowAddQuestionPanel] = useState(false);
+  const [addingQuestion, setAddingQuestion] = useState(false);
+  const [newQuestionCategory, setNewQuestionCategory] = useState('technical');
+  const [newQuestionFocusArea, setNewQuestionFocusArea] = useState('');
+  const [newQuestionText, setNewQuestionText] = useState('');
+  const [newQuestionHint, setNewQuestionHint] = useState('');
 
   // Evaluation state
   const [evaluation, setEvaluation] = useState(null);
@@ -63,6 +76,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
     setLoading(true);
     setError('');
     setShowSummary(false);
+    setShowAddQuestionPanel(false);
 
     try {
       const res = await startMockInterview(job.id, token, { forceNew });
@@ -71,7 +85,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
         // Reset evaluation state for new or resumed session
         setEvaluation(res.interview.evaluation || null);
         setSavedToDashboard(Boolean(res.interview.savedToDashboard));
-        // Initialize responses and response modes from the transcript if available
+        // Initialize responses from the transcript if available
         const initialResponses = {};
         let firstUnansweredIdx = 0;
         let foundUnanswered = false;
@@ -108,6 +122,9 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const currentQNum = currentQuestion ? Number(currentQuestion.questionNumber || currentIndex + 1) : currentIndex + 1;
   const currentAnswer = responses[currentQNum] || '';
   const isTechnical = currentQuestion ? currentQuestion.category === 'technical' : currentQNum <= 3;
+
+  const technicalCount = questions.filter((q) => q.category === 'technical').length;
+  const behavioralCount = questions.filter((q) => q.category === 'behavioral').length;
 
   const handleTextChange = (e) => {
     const val = e.target.value;
@@ -166,12 +183,65 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
   const handleCompleteInterview = async () => {
     await persistCurrentAnswer('completed');
     setShowSummary(true);
+    const hasAnyResponse = Object.values(responses).some((r) => String(r || '').trim().length > 0);
+    if (hasAnyResponse) {
+      await handleEvaluate(true);
+    }
+  };
+
+  // Generate or add a new question to the current questionnaire
+  const handleAddQuestion = async ({ generate = false, categoryOverride = null } = {}) => {
+    if (!interview?.id) return;
+    const category = categoryOverride || newQuestionCategory || 'technical';
+
+    if (!generate && !newQuestionText.trim()) {
+      setError('Please enter a question prompt or click "Generate New Question".');
+      return;
+    }
+
+    setAddingQuestion(true);
+    setError('');
+    try {
+      await persistCurrentAnswer();
+      const payload = generate
+        ? { generate: true, category }
+        : {
+            generate: false,
+            category,
+            focusArea: newQuestionFocusArea.trim(),
+            question: newQuestionText.trim(),
+            hint: newQuestionHint.trim()
+          };
+
+      const res = await addMockInterviewQuestion(interview.id, payload, token);
+      if (res && res.interview) {
+        setInterview(res.interview);
+        const newIdx = (res.interview.questions || []).length - 1;
+        setNewQuestionText('');
+        setNewQuestionFocusArea('');
+        setNewQuestionHint('');
+        setShowAddQuestionPanel(false);
+        setShowSummary(false);
+        if (newIdx >= 0) {
+          setCurrentIndex(newIdx);
+        }
+      }
+    } catch (err) {
+      setError(err.error || err.message || 'Failed to add new question.');
+    } finally {
+      setAddingQuestion(false);
+    }
   };
 
   const answeredCount = questions.filter((q, idx) => {
     const qNum = Number(q.questionNumber || idx + 1);
     return Boolean((responses[qNum] || '').trim());
   }).length;
+
+  const questionScoreMap = {};
+  (evaluation?.questionFeedback || []).forEach((qf) => {
+    questionScoreMap[qf.questionNumber] = qf;
+  });
 
   return (
     <div
@@ -218,11 +288,12 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '1rem'
+            gap: '1rem',
+            flexWrap: 'wrap'
           }}
         >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
               <span
                 style={{
                   backgroundColor: '#3b82f6',
@@ -238,7 +309,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                 AI Mock Interview
               </span>
               <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                3 Technical · 2 Behavioral (STAR)
+                {technicalCount} Technical · {behavioralCount} Behavioral (STAR)
               </span>
             </div>
             <h2
@@ -250,26 +321,43 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close Mock Interview Modal"
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.12)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              width: '36px',
-              height: '36px',
-              fontSize: '1.1rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            ✕
-          </button>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowGradingSchematic((prev) => !prev)}
+            >
+              {showGradingSchematic ? 'Hide Grading Schematic' : 'Grading Schematic'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAddQuestionPanel((prev) => !prev)}
+              disabled={loading || !interview}
+            >
+              + Add Question
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close Mock Interview Modal"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                width: '36px',
+                height: '36px',
+                fontSize: '1.1rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -290,17 +378,93 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
             </div>
           )}
 
+          {/* Collapsible Grading Schematic Panel */}
+          {showGradingSchematic && <GradingSchematicPanel />}
+
+          {/* Collapsible Add New Question Panel */}
+          {showAddQuestionPanel && interview && (
+            <div>
+              <div>
+                <h4>+ Add New Question to Questionnaire (Q{questions.length + 1})</h4>
+                <p>
+                  Generate a new AI-tailored question from the job description or write your own custom question below.
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    disabled={addingQuestion}
+                    onClick={() => handleAddQuestion({ generate: true, categoryOverride: 'technical' })}
+                  >
+                    {addingQuestion ? 'Generating...' : 'Generate New Technical Question'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={addingQuestion}
+                    onClick={() => handleAddQuestion({ generate: true, categoryOverride: 'behavioral' })}
+                  >
+                    {addingQuestion ? 'Generating...' : 'Generate New Behavioral (STAR) Question'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Question Input Form */}
+              <div>
+                <div>Or Write a Custom Question:</div>
+                <div>
+                  <select
+                    aria-label="New Question Category"
+                    value={newQuestionCategory}
+                    onChange={(e) => setNewQuestionCategory(e.target.value)}
+                  >
+                    <option value="technical">Technical / Role-Specific</option>
+                    <option value="behavioral">Behavioral (STAR Method)</option>
+                  </select>
+
+                  <input
+                    type="text"
+                    placeholder="Focus area (e.g., System Design, Conflict Resolution)"
+                    value={newQuestionFocusArea}
+                    onChange={(e) => setNewQuestionFocusArea(e.target.value)}
+                  />
+                </div>
+
+                <textarea
+                  rows={2}
+                  placeholder="Enter your custom interview question prompt..."
+                  value={newQuestionText}
+                  onChange={(e) => setNewQuestionText(e.target.value)}
+                />
+
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Optional interviewer coaching hint..."
+                    value={newQuestionHint}
+                    onChange={(e) => setNewQuestionHint(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    disabled={addingQuestion}
+                    onClick={() => handleAddQuestion({ generate: false })}
+                  >
+                    {addingQuestion ? 'Adding...' : '+ Add Custom Question'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#475569' }}>
               <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.4rem', color: '#0f172a' }}>
-                Generating 5 Tailored Interview Questions...
+                Generating Tailored Interview Questions...
               </div>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-                Analyzing job description & requirements for 3 technical/role-specific and 2 STAR behavioral prompts.
+                Analyzing job description & requirements for technical/role-specific and STAR behavioral prompts.
               </p>
             </div>
           ) : showSummary ? (
-            /* Completed Transcript Review View */
+            /* Completed Transcript & Grading View */
             <div>
               <div
                 style={{
@@ -321,10 +485,18 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                     Mock Interview Transcript Saved ({answeredCount}/{questions.length} Answered)
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#15803d' }}>
-                    Review your technical and STAR behavioral responses below or practice again with a fresh set of questions.
+                    Grade your questionnaire responses against the 100-point rubric, add more questions, or start a fresh set.
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleEvaluate(true)}
+                    disabled={evaluating || answeredCount === 0}
+                  >
+                    {evaluating ? 'Grading...' : evaluation ? 'Re-Grade Questionnaire' : 'Grade Questionnaire'}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setShowSummary(false)}
@@ -341,7 +513,14 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                   >
                     Edit Responses
                   </button>
-                  
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddQuestionPanel((prev) => !prev)}
+                  >
+                    + Add Question
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => loadInterviewSession(true)}
@@ -361,11 +540,31 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                 </div>
               </div>
 
+              {evaluation && (
+                <div>
+                  <h3>AI Evaluation Scorecard & Grading Breakdown</h3>
+                  <MockInterviewScorecard
+                    interview={interview}
+                    evaluation={evaluation}
+                    saved={savedToDashboard}
+                    saving={savingCritique}
+                    evaluating={evaluating}
+                    onToggleSave={handleToggleSaveCritique}
+                    onReEvaluate={() => handleEvaluate(true)}
+                  />
+                </div>
+              )}
+
+              {!evaluation && !showGradingSchematic && <GradingSchematicPanel />}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {questions.map((q, idx) => {
                   const qNum = Number(q.questionNumber || idx + 1);
                   const isTech = q.category === 'technical';
                   const ans = (responses[qNum] || '').trim();
+                  const qEval = questionScoreMap[qNum];
+                  const qLetter = qEval ? getLetterGrade(qEval.overall) : null;
+
                   return (
                     <div
                       key={q.id || qNum}
@@ -394,6 +593,11 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                             {q.focusArea}
                           </span>
                         )}
+                        {qEval && (
+                          <span>
+                            Grade {qLetter} · {qEval.overall}/100 ({qEval.rating})
+                          </span>
+                        )}
                       </div>
                       <p style={{ margin: '0 0 0.6rem 0', fontWeight: '600', color: '#0f172a', fontSize: '0.95rem' }}>
                         {q.question}
@@ -414,20 +618,6 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                     </div>
                   );
                 })}
-                {evaluation && (
-                  <div style={{ marginTop: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', color: '#0f172a' }}>AI Evaluation Scorecard</h3>
-                    <MockInterviewScorecard
-                      interview={interview}
-                        evaluation={evaluation}
-                        saved={savedToDashboard}
-                        saving={savingCritique}
-                        evaluating={evaluating}
-                        onToggleSave={handleToggleSaveCritique}
-                        onReEvaluate={() => handleEvaluate(true)}
-                      />
-                    </div> 
-                )}
               </div>
             </div>
           ) : currentQuestion ? (
@@ -444,7 +634,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                   marginBottom: '1rem'
                 }}
               >
-                <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {questions.map((q, idx) => {
                     const qNum = Number(q.questionNumber || idx + 1);
                     const isCurrent = idx === currentIndex;
@@ -486,6 +676,14 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                       </button>
                     );
                   })}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddQuestionPanel((prev) => !prev)}
+                    title="Add a new question to this mock interview"
+                  >
+                    + Question
+                  </button>
                 </div>
 
                 <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: '600' }}>
@@ -546,8 +744,8 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                       }}
                     >
                       {isTechnical
-                        ? `Technical / Role-Specific (${currentQNum} of 3)`
-                        : `Behavioral — STAR Method (${currentQNum - 3} of 2)`}
+                        ? `Technical / Role-Specific (Q${currentQNum})`
+                        : `Behavioral — STAR Method (Q${currentQNum})`}
                     </span>
 
                     {currentQuestion.focusArea && (
@@ -661,6 +859,9 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                   >
                     Your Written Response:
                   </label>
+                  <span>
+                    {' '}(Graded on Clarity 33.3%, Relevance 33.3%, and {isTechnical ? 'Technical Depth' : 'STAR Method'} 33.3%)
+                  </span>
                 </div>
 
                 <textarea
@@ -722,7 +923,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
               ← Previous Question
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setShowSummary(true)}
@@ -737,7 +938,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                   cursor: 'pointer'
                 }}
               >
-                View Transcript
+                View Transcript & Grading
               </button>
 
               {currentIndex < questions.length - 1 ? (
@@ -762,7 +963,7 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                 <button
                   type="button"
                   onClick={handleCompleteInterview}
-                  disabled={saving}
+                  disabled={saving || evaluating}
                   style={{
                     backgroundColor: '#16a34a',
                     color: '#ffffff',
@@ -771,10 +972,10 @@ export default function MockInterviewModal({ isOpen, onClose, job, token }) {
                     borderRadius: '8px',
                     fontWeight: '700',
                     fontSize: '0.88rem',
-                    cursor: saving ? 'wait' : 'pointer'
+                    cursor: saving || evaluating ? 'wait' : 'pointer'
                   }}
                 >
-                  {saving ? 'Saving...' : 'Finish & Save Transcript ✓'}
+                  {saving || evaluating ? 'Grading...' : 'Finish & Grade Questionnaire ✓'}
                 </button>
               )}
             </div>
