@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -13,36 +14,48 @@ export default function Navbar() {
 
   return (
     <nav>
-      <strong>CareerConnect</strong> | {' '}
+      <strong>CareerConnect</strong> |{' '}
       {isAuthenticated && user ? (
         <>
-          <Link to="/dashboard">Dashboard</Link> | <Link to="/jobs">Jobs</Link> | <Link to="/companies">Companies</Link> |{' '}
-            
-{user.role !== 'Recruiter' && (
-  <>
-    <Link to="/saved-jobs">Saved Jobs</Link> |{' '}
-  </>
-)}
+          <Link to="/dashboard">Dashboard</Link> |{' '}
+          <Link to="/jobs">Jobs</Link> |{' '}
+          <Link to="/companies">Companies</Link> |{' '}
 
-{user.role === 'Job Seeker' && (
-  <>
-    <Link to="/profile">My Profile</Link> |{' '}
-  </>
-)}
-
-        
-          {user.role === 'Recruiter' && (
+          {user.role !== 'Recruiter' && (
             <>
-              <Link to={company ? `/companies/${company.id}` : '/recruiter/company'}>My Company</Link> | <Link to="/recruiter/jobs">My Postings</Link> |{' '}
+              <Link to="/saved-jobs">Saved Jobs</Link> |{' '}
             </>
           )}
+
+          {user.role === 'Recruiter' && (
+            <>
+              <Link
+                to={
+                  company
+                    ? `/companies/${company.id}`
+                    : '/recruiter/company'
+                }
+              >
+                My Company
+              </Link> |{' '}
+              <Link to="/recruiter/jobs">
+                My Postings
+              </Link> |{' '}
+            </>
+          )}
+
           <Link to="/messages">Messages</Link> |{' '}
-          <span>Logged in as: {user.email} ({user.role})</span>{' '}
-          <button onClick={handleLogout}>Logout</button>
+          <span>
+            Logged in as: {user.email} ({user.role})
+          </span>{' '}
+          <button onClick={handleLogout}>
+            Logout
+          </button>
         </>
       ) : (
         <>
-          <Link to="/login">Log In</Link> | <Link to="/register">Sign Up</Link>
+          <Link to="/login">Log In</Link> |{' '}
+          <Link to="/register">Sign Up</Link>
         </>
       )}
       <hr />
