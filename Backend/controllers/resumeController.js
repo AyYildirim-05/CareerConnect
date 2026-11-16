@@ -63,13 +63,22 @@ const uploadResume = async (req, res) => {
 /**
  * Get current authenticated user's parsed resume JSON
  */
+
+
+/**
+ * Get current authenticated user's parsed resume JSON
+ */
 const getResumeProfile = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const resumeJson = await JobSeekerModel.getResumeJson(req.user.id);
+
     if (!resumeJson) {
       return res.status(404).json({
         success: false,
@@ -83,6 +92,7 @@ const getResumeProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching resume profile:', error);
+
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch resume profile.'
@@ -91,15 +101,23 @@ const getResumeProfile = async (req, res) => {
 };
 
 /**
- * Download user's parsed resume profile as a .json file
+ * Upload an existing JSON format resume profile directly into Firebase
+ */
+
+/**
+ * Download user's parsed resume profile as a JSON file
  */
 const downloadResumeJson = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
     const resumeJson = await JobSeekerModel.getResumeJson(req.user.id);
+
     if (!resumeJson) {
       return res.status(404).json({
         success: false,
@@ -110,10 +128,15 @@ const downloadResumeJson = async (req, res) => {
     const filename = `careerconnect_profile_${req.user.id}.json`;
 
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`
+    );
+
     return res.send(JSON.stringify(resumeJson, null, 2));
   } catch (error) {
     console.error('Error downloading resume JSON:', error);
+
     return res.status(500).json({
       success: false,
       message: 'Failed to download resume JSON.'
@@ -121,9 +144,7 @@ const downloadResumeJson = async (req, res) => {
   }
 };
 
-/**
- * Upload an existing JSON format resume profile directly into Firebase
- */
+
 const uploadResumeJson = async (req, res) => {
   try {
     const resumeJson = req.body;

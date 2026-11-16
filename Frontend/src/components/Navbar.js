@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchNotifications, markNotificationRead, clearAllNotifications } from '../services/notificationService';
 
-
 export default function Navbar() {
   const { user, isAuthenticated, logout, company, token } = useAuth();
   const navigate = useNavigate();
@@ -53,29 +52,36 @@ useEffect(() => {
 
   return (
     <nav>
-      <strong>CareerConnect</strong> | {' '}
+      <strong>CareerConnect</strong> |{' '}
       {isAuthenticated && user ? (
         <>
-          <Link to="/dashboard">Dashboard</Link> | <Link to="/jobs">Jobs</Link> | <Link to="/companies">Companies</Link> |{' '}
-            
-{user.role !== 'Recruiter' && (
-  <>
-    <Link to="/saved-jobs">Saved Jobs</Link> |{' '}
-  </>
-)}
+          <Link to="/dashboard">Dashboard</Link> |{' '}
+          <Link to="/jobs">Jobs</Link> |{' '}
+          <Link to="/companies">Companies</Link> |{' '}
 
-{user.role === 'Job Seeker' && (
-  <>
-    <Link to="/profile">My Profile</Link> |{' '}
-  </>
-)}
-
-        
-          {user.role === 'Recruiter' && (
+          {user.role !== 'Recruiter' && (
             <>
-              <Link to={company ? `/companies/${company.id}` : '/recruiter/company'}>My Company</Link> | <Link to="/recruiter/jobs">My Postings</Link> |{' '}
+              <Link to="/saved-jobs">Saved Jobs</Link> |{' '}
             </>
           )}
+
+          {user.role === 'Recruiter' && (
+            <>
+              <Link
+                to={
+                  company
+                    ? `/companies/${company.id}`
+                    : '/recruiter/company'
+                }
+              >
+                My Company
+              </Link> |{' '}
+              <Link to="/recruiter/jobs">
+                My Postings
+              </Link> |{' '}
+            </>
+          )}
+
           <Link to="/messages">Messages</Link> |{' '}
           <span style={{ position: 'relative', display: 'inline-block', margin: '0 4px' }}>
             <button onClick={() => setShowDropdown(!showDropdown)} style={{ cursor: 'pointer', background: 'none', border: '1px solid #ccc', padding: '2px 6px', borderRadius: '4px' }}>
@@ -112,7 +118,8 @@ useEffect(() => {
         </>
       ) : (
         <>
-          <Link to="/login">Log In</Link> | <Link to="/register">Sign Up</Link>
+          <Link to="/login">Log In</Link> |{' '}
+          <Link to="/register">Sign Up</Link>
         </>
       )}
       <hr />

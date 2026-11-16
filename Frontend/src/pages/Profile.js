@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { getProfile, updateProfile } from '../services/profileService';
-
+import ResumeProfileEditor from '../components/ResumeProfileEditor';
+import ProfileResumeManager from '../components/ProfileResumeManager';
 const emptyProfile = {
   firstName: '',
   lastName: '',
@@ -45,7 +46,6 @@ export default function Profile() {
 
   function handleChange(event) {
     const { name, value } = event.target;
-
     setProfile(prev => ({
       ...prev,
       [name]: value
@@ -141,6 +141,7 @@ export default function Profile() {
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
-    </div>
+<ProfileResumeManager />
+<ResumeProfileEditor />    </div>
   );
 }
