@@ -41,6 +41,9 @@ export default function Companies() {
       {companies.map((company) => (
         <div key={company.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>
+            {company.logo && (
+              <img src={company.logo} alt="" style={{ width: 40, height: 40, objectFit: 'contain', verticalAlign: 'middle', marginRight: '0.5rem' }} />
+            )}
             <Link to={`/companies/${company.id}`}>{company.name}</Link>
           </h3>
           <p style={{ margin: '0.25rem 0' }}>

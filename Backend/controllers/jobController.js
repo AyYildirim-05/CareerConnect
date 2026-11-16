@@ -62,8 +62,8 @@ class JobController {
         return res.status(400).json({ message: 'Validation failed', errors });
       }
 
-      // Jobs are always posted under the recruiter's own company
-      const company = await CompanyModel.findByOwner(req.user.id);
+      // Jobs are always posted under the recruiter's company (owned or joined)
+      const company = await CompanyModel.findForUser(req.user.id);
       if (!company) {
         return res.status(400).json({ error: NO_COMPANY_ERROR });
       }
@@ -109,7 +109,7 @@ class JobController {
       }
 
       // Re-link to the recruiter's company (also fixes postings made before companies existed)
-      const company = await CompanyModel.findByOwner(req.user.id);
+      const company = await CompanyModel.findForUser(req.user.id);
       if (!company) {
         return res.status(400).json({ error: NO_COMPANY_ERROR });
       }
@@ -173,10 +173,12 @@ class JobController {
   /**
    * GET /api/jobs
    * Active job listings (published postings only)
+   * Supports query filters: keyword, location, type, workMode
    */
   static async listPublished(req, res) {
     try {
-      const jobs = await JobPostingModel.findPublished();
+      const { keyword, location, type, workMode } = req.query;
+      const jobs = await JobPostingModel.findPublished({ keyword, location, type, workMode });
       return res.status(200).json({ jobs });
     } catch (error) {
       console.error('List job postings error:', error);

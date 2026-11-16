@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const UserModel = require('./userModel');
 
 /**
  * CompanyModel
@@ -105,6 +106,18 @@ class CompanyModel {
     if (snapshot.empty) return null;
     const doc = snapshot.docs[0];
     return { id: doc.id, ...doc.data() };
+  }
+
+  /**
+   * Find the company a Recruiter belongs to: the one they own, else the one they joined
+   * @param {string} userId
+   * @returns {Promise<Object|null>}
+   */
+  static async findForUser(userId) {
+    const owned = await this.findByOwner(userId);
+    if (owned) return owned;
+    const user = await UserModel.findById(userId);
+    return user && user.companyId ? this.findById(user.companyId) : null;
   }
 
   /**

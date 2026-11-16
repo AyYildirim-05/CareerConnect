@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 import ResumeUpload from '../components/ResumeUpload';
 import ResumeFeedbackCard from '../components/ResumeFeedbackCard';
-
+import SavedCritiques from '../components/SavedCritiques';
 
 export default function ResumeManagement() {
   const { user } = useAuth();
@@ -26,6 +26,7 @@ export default function ResumeManagement() {
 
       <ResumeUpload />
       <ResumeFeedbackCard />
+      <SavedCritiques />
     </main>
   );
 }

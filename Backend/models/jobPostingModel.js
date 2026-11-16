@@ -27,7 +27,10 @@ class JobPostingModel {
     if (!firestore) throw new Error('Firestore database is not initialized');
 
     const docRef = firestore.collection(this.COLLECTION).doc();
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    const expiresAtDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const jobData = {
       id: docRef.id,
@@ -36,9 +39,10 @@ class JobPostingModel {
       companyName: company.name,
       ...fields,
       status: publish ? this.STATUS_PUBLISHED : this.STATUS_DRAFT,
-      publishedAt: publish ? now : null,
-      created_at: now,
-      updated_at: now
+      publishedAt: publish ? nowIso : null,
+      expiresAt: expiresAtDate,
+      created_at: nowIso,
+      updated_at: nowIso
     };
 
     await docRef.set(jobData);
@@ -61,10 +65,53 @@ class JobPostingModel {
   }
 
   /**
-   * Find all published postings (the active job listings), newest first
+   * Filter and search a list of job postings in memory
+   * @param {Array<Object>} jobs - List of job objects
+   * @param {Object} [filters={}] - Search criteria
+   * @param {string} [filters.keyword] - Search query matching title, company name, or description
+   * @param {string} [filters.location] - Search query matching location
+   * @param {string} [filters.type] - Search query matching employment type (jobType)
+   * @param {string} [filters.workMode] - Search query matching work mode (On-site, Remote, Hybrid)
+   * @returns {Array<Object>}
+   */
+  static filterJobs(jobs = [], filters = {}) {
+    if (!Array.isArray(jobs)) return [];
+    let filtered = [...jobs];
+    const { keyword, location, type, workMode } = filters;
+
+    if (keyword && typeof keyword === 'string' && keyword.trim()) {
+      const kw = keyword.trim().toLowerCase();
+      const tokens = kw.split(/\s+/).filter(Boolean);
+      filtered = filtered.filter(job => {
+        const text = `${job.title || ''} ${job.companyName || ''} ${job.description || ''} ${job.department || ''} ${job.requirements || ''}`.toLowerCase();
+        return text.includes(kw) || (tokens.length > 1 && tokens.every(token => text.includes(token)));
+      });
+    }
+
+    if (location && typeof location === 'string' && location.trim()) {
+      const loc = location.trim().toLowerCase();
+      filtered = filtered.filter(job => job.location && job.location.toLowerCase().includes(loc));
+    }
+
+    if (type && typeof type === 'string' && type.trim()) {
+      const t = type.trim().toLowerCase();
+      filtered = filtered.filter(job => job.jobType && job.jobType.toLowerCase() === t);
+    }
+
+    if (workMode && typeof workMode === 'string' && workMode.trim()) {
+      const wm = workMode.trim().toLowerCase();
+      filtered = filtered.filter(job => job.workMode && job.workMode.toLowerCase() === wm);
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Find all published postings (the active job listings), newest first, with optional multi-criteria filtering
+   * @param {Object} [filters={}] - Optional filters: { keyword, location, type, workMode }
    * @returns {Promise<Array<Object>>}
    */
-  static async findPublished() {
+  static async findPublished(filters = {}) {
     const firestore = db.getFirestore();
     if (!firestore) return [];
 
@@ -74,9 +121,11 @@ class JobPostingModel {
       .get();
 
     // Sorted in JS to avoid needing a Firestore composite index
-    return snapshot.docs
+    const jobs = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .sort((a, b) => (b.publishedAt || '').localeCompare(a.publishedAt || ''));
+
+    return this.filterJobs(jobs, filters);
   }
 
   /**

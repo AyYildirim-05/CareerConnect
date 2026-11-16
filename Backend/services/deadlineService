@@ -1,0 +1,62 @@
+const db = require('../config/db');
+const NotificationModel = require('../models/notificationModel');
+
+class DeadlineService {
+  static async checkExpiringSavedJobs() {
+    console.log('--- Running deadline notification scheduled check ---');
+    try {
+      const firestore = db.getFirestore();
+      if (!firestore) {
+        console.log('Firestore database is not initialized.');
+        return;
+      }
+
+      const now = new Date();
+      // Test window (set to 29-31 days for your newly created test jobs)
+      const targetTimeStart = new Date(now.getTime() + 29 * 24 * 60 * 60 * 1000).toISOString();
+      const targetTimeEnd = new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000).toISOString();
+
+      console.log(`Checking jobs expiring between ${targetTimeStart} and ${targetTimeEnd}`);
+
+      const jobsSnapshot = await firestore
+        .collection('jobPostings')
+        .where('expiresAt', '>=', targetTimeStart)
+        .where('expiresAt', '<=', targetTimeEnd)
+        .get();
+
+      console.log(`Found ${jobsSnapshot.size} jobs matching the expiration window.`);
+
+      if (jobsSnapshot.empty) return;
+
+      for (const jobDoc of jobsSnapshot.docs) {
+        const job = jobDoc.data();
+        console.log(`Checking saved mappings for job ID: ${jobDoc.id} (${job.title})`);
+        
+        const savedSnapshot = await firestore
+          .collection('savedJobs') // Matches SavedJobModel collection name
+          .where('jobId', '==', jobDoc.id)
+          .get();
+
+        console.log(`Found ${savedSnapshot.size} saved records for this job.`);
+
+        for (const saveDoc of savedSnapshot.docs) {
+          const { userId } = saveDoc.data();
+          console.log(`Creating notification for userId: ${userId}`);
+          
+          await NotificationModel.create({
+            userId,
+            jobId: jobDoc.id,
+            jobTitle: job.title,
+            message: `Reminder: Saved job "${job.title}" expires soon!`,
+            expiresAt: job.expiresAt
+          });
+        }
+      }
+      console.log('--- Deadline notification check completed successfully ---');
+    } catch (error) {
+      console.error('Error checking job expiration deadlines:', error);
+    }
+  }
+}
+
+module.exports = DeadlineService;
