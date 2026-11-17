@@ -8,12 +8,10 @@ const resumeRoutes = require('./routes/resumeRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const mockInterviewRoutes = require('./routes/mockInterviewRoutes');
 const DeadlineService = require('./services/deadlineService');
-
-
-
 
 const app = express();
 const PORT = process.env.PORT || 5500;
@@ -51,9 +49,11 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/conversations', messageRoutes);
 // Profile Management Routes
 app.use('/api/profile', profileRoutes);
+// Application routes
+app.use('/api/applications', applicationRoutes);
 // Automated Mock Interview Routes
 app.use('/api/mock-interviews', mockInterviewRoutes);
-app.use('/api/interviews', mockInterviewRoutes);   // additional route for interviews
+app.use('/api/interviews', mockInterviewRoutes);
 
 // 404 Handler
 app.use((req, res) => {

@@ -5,6 +5,7 @@ const JobPostingModel = require('./jobPostingModel');
 const CompanyModel = require('./companyModel');
 const ConversationModel = require('./conversationModel');
 const MessageModel = require('./messageModel');
+const ApplicationModel = require('./applicationModel');
 const MockInterviewModel = require('./mockInterviewModel');
 
 module.exports = {
@@ -15,6 +16,6 @@ module.exports = {
   CompanyModel,
   ConversationModel,
   MessageModel,
+  ApplicationModel,
   MockInterviewModel
 };
- 

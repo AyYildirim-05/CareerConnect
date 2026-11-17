@@ -18,7 +18,7 @@ export default function JobCard({ job }) {
           alignItems: 'flex-start',
           flexWrap: 'wrap',
           gap: '0.75rem',
-          paddingRight: '6.5rem'
+          paddingRight: '12rem'
         }}
       >
         <div>

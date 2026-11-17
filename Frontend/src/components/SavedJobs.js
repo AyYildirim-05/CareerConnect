@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchSavedJobs } from '../services/jobService';
 import JobCard from './JobCard';
 import BookmarkButton from './BookmarkButton';
+import ApplyButton from './ApplyButton';
 
 /**
  * Dedicated "Saved Jobs" view: the user's bookmarked jobs, removable in place.
@@ -41,13 +42,16 @@ export default function SavedJobs() {
       {!error && jobs.length === 0 && <p>You haven't saved any jobs yet.</p>}
 
       {jobs.map((job) => (
-        <div key={job.id}>
+        <div key={job.id} style={{ position: 'relative', marginBottom: '1.5rem' }}>
           <JobCard job={job} />
-          <BookmarkButton
-            jobId={job.id}
-            initiallySaved
-            onChange={(saved) => { if (!saved) removeFromList(job.id); }}
-          />
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <ApplyButton jobId={job.id} />
+            <BookmarkButton
+              jobId={job.id}
+              initiallySaved
+              onChange={(saved) => { if (!saved) removeFromList(job.id); }}
+            />
+          </div>
         </div>
       ))}
     </div>

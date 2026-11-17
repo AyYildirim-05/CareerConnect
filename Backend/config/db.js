@@ -100,7 +100,7 @@ async function initDb() {
 }
 
 /**
- * Create users table in PostgreSQL
+ * Create database tables in PostgreSQL
  */
 async function createPostgresTables() {
   const MockInterviewModel = require('../models/mockInterviewModel');
@@ -114,6 +114,19 @@ async function createPostgresTables() {
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+    CREATE TABLE IF NOT EXISTS applications (
+      id VARCHAR(255) PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL,
+      job_id VARCHAR(255) NOT NULL,
+      resume_url TEXT,
+      status VARCHAR(50) NOT NULL DEFAULT 'Applied' CHECK (status IN ('Applied', 'Interview', 'Offered', 'Rejected')),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT unique_user_job_application UNIQUE (user_id, job_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_applications_user ON applications(user_id);
+    CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
   `;
   await pgPool.query(queryText);
   await MockInterviewModel.ensurePostgresTable(pgPool);

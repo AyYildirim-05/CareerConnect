@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ApplicationTracker from "./ApplicationTracker";
 
 export default function Dashboard() {
   const { user, company } = useAuth();
@@ -20,24 +20,34 @@ export default function Dashboard() {
       </h3>
 
       {isSeeker ? (
-        <ul>
-          <li>
-            <Link to="/jobs">Browse Job Listings</Link>
-          </li>
-          <li>
-            <Link to="/companies">Browse Companies</Link>
-          </li>
-          <li>
-            <Link to="/profile">My Profile</Link>
-          </li>
-          <li>
-            <Link to="/resume-management">
-              Resume Management & Parsing
-            </Link>
-          </li>
-          <li>Application Status Tracking</li>
-          <li>Saved Favorite Jobs</li>
-        </ul>
+        <div>
+          <ul>
+            <li>
+              <Link to="/jobs">Browse Job Listings</Link>
+            </li>
+            <li>
+              <Link to="/companies">Browse Companies</Link>
+            </li>
+            <li>
+              <Link to="/profile">My Profile</Link>
+            </li>
+            <li>
+              <Link to="/resume-management">
+                Resume Management & Parsing
+              </Link>
+            </li>
+            <li>
+              <a href="#application-tracker">Application Status Tracking</a>
+            </li>
+            <li>
+              <Link to="/saved-jobs">Saved Favorite Jobs</Link>
+            </li>
+          </ul>
+
+          <div id="application-tracker">
+            <ApplicationTracker />
+          </div>
+        </div>
       ) : (
         <ul>
           {company && (

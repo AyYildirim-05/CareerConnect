@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { fetchPublishedJobs, fetchSavedJobs } from '../services/jobService';
 import JobCard from './JobCard';
 import BookmarkButton from './BookmarkButton';
+import ApplyButton from './ApplyButton';
+import { fetchMyApplications } from '../services/applicationService';
 import JobSearchFilter from './JobSearchFilter';
 import useDebounce from '../hooks/useDebounce';
 
@@ -37,7 +39,22 @@ export default function JobListings() {
   // Debounced keyword (350ms delay) to avoid excessive API requests
   const debouncedKeyword = useDebounce(keyword, 350);
 
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const [appliedIds, setAppliedIds] = useState(new Set());
+
+  // Load application IDs for Job Seekers once
+  useEffect(() => {
+    async function loadApplications() {
+      if (!token || user?.role !== 'Job Seeker') return;
+      try {
+        const res = await fetchMyApplications(token);
+        setAppliedIds(new Set((res.applications || []).map((a) => a.jobId)));
+      } catch (err) {
+        console.error('Failed to load applications:', err);
+      }
+    }
+    loadApplications();
+  }, [token, user]);
 
   // Load saved job bookmark IDs once
   useEffect(() => {
@@ -192,7 +209,12 @@ export default function JobListings() {
                 position: 'relative'
               }}
             >
-              <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2 }}>
+              <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <ApplyButton
+                  jobId={job.id}
+                  initiallyApplied={appliedIds.has(job.id)}
+                  onApplied={(id) => setAppliedIds((prev) => new Set([...prev, id]))}
+                />
                 <BookmarkButton jobId={job.id} initiallySaved={savedIds.has(job.id)} />
               </div>
               <JobCard job={job} />
