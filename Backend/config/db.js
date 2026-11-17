@@ -103,6 +103,7 @@ async function initDb() {
  * Create database tables in PostgreSQL
  */
 async function createPostgresTables() {
+  const MockInterviewModel = require('../models/mockInterviewModel');
   const queryText = `
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -128,6 +129,7 @@ async function createPostgresTables() {
     CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
   `;
   await pgPool.query(queryText);
+  await MockInterviewModel.ensurePostgresTable(pgPool);
 }
 
 /**

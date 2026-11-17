@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import ResumeUpload from "./ResumeUpload";
-import ResumeFeedbackCard from "./ResumeFeedbackCard";
 import ApplicationTracker from "./ApplicationTracker";
 
 export default function Dashboard() {
@@ -17,31 +15,66 @@ export default function Dashboard() {
       <h1>Welcome, {user.email}</h1>
       <p>Role: {user.role}</p>
 
-      <h3>{isSeeker ? 'Job Seeker Tools' : 'Recruiter Tools'}</h3>
+      <h3>
+        {isSeeker ? 'Job Seeker Tools' : 'Recruiter Tools'}
+      </h3>
+
       {isSeeker ? (
         <div>
           <ul>
-            <li><Link to="/jobs">Browse Job Listings</Link></li>
-            <li><Link to="/companies">Browse Companies</Link></li>
-            <li>Resume Management & Parsing</li>
-            <li><a href="#application-tracker">Application Status Tracking</a></li>
-            <li><Link to="/saved-jobs">Saved Favorite Jobs</Link></li>
+            <li>
+              <Link to="/jobs">Browse Job Listings</Link>
+            </li>
+            <li>
+              <Link to="/companies">Browse Companies</Link>
+            </li>
+            <li>
+              <Link to="/profile">My Profile</Link>
+            </li>
+            <li>
+              <Link to="/resume-management">
+                Resume Management & Parsing
+              </Link>
+            </li>
+            <li>
+              <a href="#application-tracker">Application Status Tracking</a>
+            </li>
+            <li>
+              <Link to="/saved-jobs">Saved Favorite Jobs</Link>
+            </li>
           </ul>
 
           <div id="application-tracker">
             <ApplicationTracker />
           </div>
-
-          <ResumeUpload />
-          <ResumeFeedbackCard />
         </div>
       ) : (
         <ul>
-          {company && <li><Link to={`/companies/${company.id}`}>View My Company Page ({company.name})</Link></li>}
-          <li><Link to="/recruiter/company">Edit Company Profile</Link></li>
-          <li><Link to="/recruiter/jobs/new">Post New Job Listings</Link></li>
-          <li><Link to="/recruiter/jobs">Manage My Job Postings</Link></li>
-          <li><Link to="/jobs">View Active Job Listings</Link></li>
+          {company && (
+            <li>
+              <Link to={`/companies/${company.id}`}>
+                View My Company Page ({company.name})
+              </Link>
+            </li>
+          )}
+          <li>
+            <Link to="/recruiter/company">
+              Edit Company Profile
+            </Link>
+          </li>
+          <li>
+            <Link to="/recruiter/jobs/new">
+              Post New Job Listings
+            </Link>
+          </li>
+          <li>
+            <Link to="/recruiter/jobs">
+              Manage My Job Postings
+            </Link>
+          </li>
+          <li>
+            <Link to="/jobs">View Active Job Listings</Link>
+          </li>
           <li>Screening Question Library</li>
           <li>Manage Candidate Applications</li>
         </ul>

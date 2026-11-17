@@ -30,5 +30,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
+  },
+  "allowScripts": {
+    "pdf-parse@2.4.5": true
   }
 }

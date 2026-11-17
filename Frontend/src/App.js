@@ -15,6 +15,7 @@ import CompanyForm from './components/CompanyForm';
 import SavedJobs from './components/SavedJobs';
 import Messages from './components/Messages';
 import Profile from './pages/Profile';
+import ResumeManagement from './pages/ResumeManagement';
 
 export default function App() {
   return (
@@ -98,6 +99,16 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+
+<Route
+  path="/resume-management"
+  element={
+    <ProtectedRoute allowedRoles={['Job Seeker']}>
+      <ResumeManagement />
+    </ProtectedRoute>
+  }
+/>
+
             <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
             
 <Route

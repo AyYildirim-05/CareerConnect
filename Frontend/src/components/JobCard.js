@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import JobMatchWidget from './JobMatchWidget';
+import MockInterviewWidget from './MockInterviewWidget';
 
 /**
  * One published job posting, shown in the job listings and on company pages.
@@ -40,7 +41,11 @@ export default function JobCard({ job }) {
       <p style={{ whiteSpace: 'pre-wrap' }}>{job.description}</p>
       <p><strong>Requirements:</strong></p>
       <p style={{ whiteSpace: 'pre-wrap' }}>{job.requirements}</p>
-      <small>Posted {new Date(job.publishedAt).toLocaleDateString()}</small>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <small>Posted {new Date(job.publishedAt).toLocaleDateString()}</small>
+        {/* Automated Mock Interview Launcher (Task 11.3) */}
+        <MockInterviewWidget job={job} />
+      </div>
     </div>
   );
 }
