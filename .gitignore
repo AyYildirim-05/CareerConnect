@@ -81,11 +81,4 @@ ehthumbs.db
 *.sublime-workspace
 *.sublime-project
 
-# ==============================================================================
-# AI Log Folder (excluded for now; keeps AI_Usage_Log.md tracked)
-# ==============================================================================
-AI_Log/
-**/AI_Log/
-Documentation/AI_Log/
-
 graphify-out/
