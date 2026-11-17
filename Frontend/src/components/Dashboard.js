@@ -29,8 +29,13 @@ export default function Dashboard() {
               <Link to="/companies">Browse Companies</Link>
             </li>
             <li>
+
               <Link to="/profile">My Profile</Link>
             </li>
+            <li>
+              <Link to="/application-analytics">Application Analytics & History</Link>
+            </li>
+            
             <li>
               <Link to="/resume-management">
                 Resume Management & Parsing

@@ -74,3 +74,38 @@ export async function fetchJobApplicants(token, jobId) {
 
   return data;
 }
+
+// Get application analytics & conversion metrics (Task 13.1)
+export async function fetchApplicationStats(token, { startDate = '', endDate = '' } = {}) {
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`${API_BASE_URL}/applications/stats${queryString}`, {
+    method: 'GET',
+    headers: getAuthHeaders(token)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || data.message || 'Failed to fetch application analytics.');
+  }
+
+  return data;
+}
+
+// Get archived job posting details for a past application
+export async function fetchArchivedJobDetails(applicationId, token) {
+  const response = await fetch(`${API_BASE_URL}/applications/${applicationId}/job-details`, {
+    method: 'GET',
+    headers: getAuthHeaders(token)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || data.message || 'Failed to fetch posting details.');
+  }
+
+  return data;
+}

@@ -137,6 +137,87 @@ class ApplicationModel {
     await docRef.update(updates);
     return { ...doc.data(), ...updates, id: doc.id };
   }
+
+   // Aggregate application analytics for a Job Seeker
+   // Supports optional ISO date range filtering (startDate, endDate)
+  static async getStatsByUser(userId, { startDate, endDate } = {}) {
+    let applications = await this.findByUser(userId);
+
+    // Filter by date range if provided
+    if (startDate) {
+      const start = startDate.includes('T')
+        ? new Date(startDate).toISOString()
+        : new Date(`${startDate}T00:00:00.000Z`).toISOString();
+      applications = applications.filter((app) => (app.created_at || '') >= start);
+    }
+    if (endDate) {
+      const end = endDate.includes('T')
+        ? new Date(endDate).toISOString()
+        : new Date(`${endDate}T23:59:59.999Z`).toISOString();
+      applications = applications.filter((app) => (app.created_at || '') <= end);
+    }
+
+    // Initialize counts grouped by status
+    const statusCounts = {
+      Applied: 0,
+      Interview: 0,
+      Offered: 0,
+      Rejected: 0
+    };
+
+    const monthlyMap = {};
+
+    applications.forEach((app) => {
+      const status = this.VALID_STATUSES.includes(app.status) ? app.status : 'Applied';
+      statusCounts[status] += 1;
+
+      // Group by YYYY-MM for monthly timeline chart
+      if (app.created_at) {
+        const monthKey = app.created_at.slice(0, 7); // e.g., "2026-09"
+        if (!monthlyMap[monthKey]) {
+          monthlyMap[monthKey] = {
+            month: monthKey,
+            total: 0,
+            Applied: 0,
+            Interview: 0,
+            Offered: 0,
+            Rejected: 0
+          };
+        }
+        monthlyMap[monthKey].total += 1;
+        monthlyMap[monthKey][status] += 1;
+      }
+    });
+
+    const total = applications.length;
+    // Responses = any application that moved past initial 'Applied' state
+    const respondedCount = statusCounts.Interview + statusCounts.Offered + statusCounts.Rejected;
+    const interviewStageCount = statusCounts.Interview + statusCounts.Offered;
+
+    const metrics = {
+      totalSubmitted: total,
+      appliedCount: statusCounts.Applied,
+      interviewInvites: statusCounts.Interview,
+      offers: statusCounts.Offered,
+      rejections: statusCounts.Rejected,
+      responseRate: total > 0 ? Number(((respondedCount / total) * 100).toFixed(1)) : 0,
+      interviewRate: total > 0 ? Number(((interviewStageCount / total) * 100).toFixed(1)) : 0,
+      offerConversionRate: interviewStageCount > 0
+        ? Number(((statusCounts.Offered / interviewStageCount) * 100).toFixed(1))
+        : 0
+    };
+
+    const monthlyActivity = Object.values(monthlyMap).sort((a, b) =>
+      a.month.localeCompare(b.month)
+    );
+
+    return {
+      metrics,
+      statusCounts,
+      monthlyActivity,
+      applications
+    };
+  }
 }
 
 module.exports = ApplicationModel;

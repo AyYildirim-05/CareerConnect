@@ -16,6 +16,7 @@ import SavedJobs from './components/SavedJobs';
 import Messages from './components/Messages';
 import Profile from './pages/Profile';
 import ResumeManagement from './pages/ResumeManagement';
+import ApplicationAnalytics from './pages/ApplicationAnalytics';
 
 export default function App() {
   return (
@@ -42,15 +43,23 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/application-analytics"
+              element={
+                <ProtectedRoute allowedRoles={['Job Seeker']}>
+                  <ApplicationAnalytics />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/saved-jobs"
               element={
-              <ProtectedRoute>
-                <SavedJobs />
-              </ProtectedRoute>
-            }
-/> 
+                <ProtectedRoute>
+                  <SavedJobs />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/companies"
               element={
@@ -100,25 +109,25 @@ export default function App() {
               }
             />
 
-<Route
-  path="/resume-management"
-  element={
-    <ProtectedRoute allowedRoles={['Job Seeker']}>
-      <ResumeManagement />
-    </ProtectedRoute>
-  }
-/>
+            <Route
+              path="/resume-management"
+              element={
+                <ProtectedRoute allowedRoles={['Job Seeker']}>
+                  <ResumeManagement />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-            
-<Route
-  path="/profile"
-  element={
-    <ProtectedRoute allowedRoles={['Job Seeker']}>
-      <Profile />
-    </ProtectedRoute>
-  }
-/>
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={['Job Seeker']}>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

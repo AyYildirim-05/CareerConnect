@@ -159,6 +159,62 @@ class ApplicationController {
       return res.status(500).json({ error: 'Failed to fetch job applicants.' });
     }
   }
+
+  /**
+ * GET /api/applications/stats?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ * Task 13.1: Aggregation query endpoint returning application counts & conversion metrics
+ */
+static async getStats(req, res) {
+  try {
+    const { startDate, endDate } = req.query;
+    const stats = await ApplicationModel.getStatsByUser(req.user.id, {
+      startDate,
+      endDate
+    });
+    return res.status(200).json(stats);
+  } catch (error) {
+    console.error('Get application stats error:', error);
+    return res.status(500).json({ error: 'Failed to compute application analytics.' });
+  }
+}
+
+
+ // GET /api/applications/:id/job-details
+ // Acceptance Criteria: Allows the applicant to view job posting details even if the posting is closed/archived 
+static async getArchivedJobDetails(req, res) {
+  try {
+    const application = await ApplicationModel.findById(req.params.id);
+    if (!application || application.userId !== String(req.user.id)) {
+      return res.status(404).json({ error: 'Application not found.' });
+    }
+
+    const job = await JobPostingModel.findById(application.jobId);
+
+    // Fallback snapshot if the job document was permanently deleted from the DB
+    if (!job) {
+      return res.status(200).json({
+        archived: true,
+        job: {
+          id: application.jobId,
+          title: application.jobTitle || 'Archived Position',
+          companyName: application.companyName || 'Unknown Company',
+          status: 'Closed / Removed',
+          description: 'This job posting has been closed and removed from active listings.'
+        },
+        application
+      });
+    }
+
+    return res.status(200).json({
+      archived: job.status !== JobPostingModel.STATUS_PUBLISHED,
+      job,
+      application
+    });
+  } catch (error) {
+    console.error('Get archived job details error:', error);
+    return res.status(500).json({ error: 'Failed to load posting details.' });
+  }
+}
 }
 
 module.exports = ApplicationController;
