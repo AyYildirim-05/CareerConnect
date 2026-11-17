@@ -12,7 +12,8 @@ function createMockFirestore() {
     recruiters: new Map(),
     companies: new Map(),
     jobPostings: new Map(),
-    savedJobs: new Map()
+    savedJobs: new Map(),
+    applications: new Map()
   };
 
   function getMap(coll) {
@@ -159,16 +160,6 @@ function seedDemoData(store) {
   store.companies.set(company.id, company);
 
   // 2. Job Seeker user
-  const seekerUser = {
-    id: 'user_seeker_1',
-    email: 'jobseeker@careerconnect.com',
-    password_hash: hash,
-    role: 'Job Seeker',
-    created_at: now,
-    updated_at: now
-  };
-  store.users.set(seekerUser.id, seekerUser);
-
   const seekerProfile = {
     id: 'user_seeker_1',
     fullName: 'Alex Mercer',
@@ -177,10 +168,22 @@ function seedDemoData(store) {
     location: 'Montreal, QC',
     bio: 'Software Engineering student with passion for full-stack web and cloud systems.',
     skills: ['JavaScript', 'React', 'Node.js', 'PostgreSQL', 'Docker'],
+    resumeUrl: 'https://storage.googleapis.com/resumes/alex_mercer.pdf',
     created_at: now,
     updated_at: now
   };
   store.jobSeekers.set(seekerProfile.id, seekerProfile);
+
+  const seekerUser = {
+    id: 'user_seeker_1',
+    email: 'jobseeker@careerconnect.com',
+    password_hash: hash,
+    role: 'Job Seeker',
+    profile: seekerProfile,
+    created_at: now,
+    updated_at: now
+  };
+  store.users.set(seekerUser.id, seekerUser);
 
   // 3. Comprehensive Demo Job Postings (52 unique jobs across Canada)
   const postings = [

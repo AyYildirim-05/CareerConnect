@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ResumeUpload from "./ResumeUpload";
 import ResumeFeedbackCard from "./ResumeFeedbackCard";
+import ApplicationTracker from "./ApplicationTracker";
 
 export default function Dashboard() {
   const { user, company } = useAuth();
@@ -19,16 +20,21 @@ export default function Dashboard() {
       <h3>{isSeeker ? 'Job Seeker Tools' : 'Recruiter Tools'}</h3>
       {isSeeker ? (
         <div>
-        <ul>
-          <li><Link to="/jobs">Browse Job Listings</Link></li>
-          <li><Link to="/companies">Browse Companies</Link></li>
-          <li>Resume Management & Parsing</li>
-          <li>Application Status Tracking</li>
-          <li>Saved Favorite Jobs</li>
-        </ul>
-            <ResumeUpload />
-            <ResumeFeedbackCard />
-      </div>
+          <ul>
+            <li><Link to="/jobs">Browse Job Listings</Link></li>
+            <li><Link to="/companies">Browse Companies</Link></li>
+            <li>Resume Management & Parsing</li>
+            <li><a href="#application-tracker">Application Status Tracking</a></li>
+            <li><Link to="/saved-jobs">Saved Favorite Jobs</Link></li>
+          </ul>
+
+          <div id="application-tracker">
+            <ApplicationTracker />
+          </div>
+
+          <ResumeUpload />
+          <ResumeFeedbackCard />
+        </div>
       ) : (
         <ul>
           {company && <li><Link to={`/companies/${company.id}`}>View My Company Page ({company.name})</Link></li>}

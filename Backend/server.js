@@ -8,6 +8,7 @@ const resumeRoutes = require('./routes/resumeRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5500;
@@ -43,6 +44,8 @@ const messageRoutes = require('./routes/messageRoutes');
 app.use('/api/conversations', messageRoutes);
 // Profile Management Routes
 app.use('/api/profile', profileRoutes);
+// Application routes
+app.use('/api/applications', applicationRoutes);
 
 // 404 Handler
 app.use((req, res) => {

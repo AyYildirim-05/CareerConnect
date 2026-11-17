@@ -5,6 +5,7 @@ const JobPostingModel = require('./jobPostingModel');
 const CompanyModel = require('./companyModel');
 const ConversationModel = require('./conversationModel');
 const MessageModel = require('./messageModel');
+const ApplicationModel = require('./applicationModel');
 
 module.exports = {
   UserModel,
@@ -13,6 +14,6 @@ module.exports = {
   JobPostingModel,
   CompanyModel,
   ConversationModel,
-  MessageModel
+  MessageModel,
+  ApplicationModel
 };
- 
