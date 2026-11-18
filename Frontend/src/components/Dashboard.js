@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ApplicationTracker from './ApplicationTracker';
@@ -45,15 +45,24 @@ const seekerTools = [
 export default function Dashboard() {
   const { user, company } = useAuth();
 
+  const [showTracker, setShowTracker] = useState(false);
+
   if (!user) return null;
 
   const isSeeker = user.role === 'Job Seeker';
 
+  const handleTrackerToggle = () => {
+    setShowTracker(prev => !prev);
+  };
+
   return (
     <div className="cc-container cc-dashboard">
+
+      {/* Dashboard header */}
       <header className="cc-dashboard-header">
         <div>
           <h1>Welcome, {user.email}</h1>
+
           <p className="cc-muted">
             Manage your CareerConnect activities.
           </p>
@@ -64,6 +73,7 @@ export default function Dashboard() {
         </span>
       </header>
 
+      {/* Dashboard tools */}
       <section aria-labelledby="dashboard-tools-heading">
         <h2 id="dashboard-tools-heading">
           {isSeeker ? 'Job Seeker Tools' : 'Recruiter Tools'}
@@ -71,17 +81,33 @@ export default function Dashboard() {
 
         {isSeeker ? (
           <div className="cc-grid">
-            {seekerTools.map(tool =>
-              tool.path.startsWith('#') ? (
-                <a
-                  key={tool.title}
-                  href={tool.path}
-                  className="cc-tool-card"
-                >
-                  <h3>{tool.title}</h3>
-                  <p>{tool.description}</p>
-                </a>
-              ) : (
+            {seekerTools.map(tool => {
+              const isTracker =
+                tool.path === '#application-tracker';
+
+              if (isTracker) {
+                return (
+                  <button
+                    key={tool.title}
+                    type="button"
+                    className={
+                      `cc-tool-card cc-tracker-toggle${
+                        showTracker
+                          ? ' cc-tracker-toggle-active'
+                          : ''
+                      }`
+                    }
+                    onClick={handleTrackerToggle}
+                    aria-expanded={showTracker}
+                    aria-controls="application-tracker"
+                  >
+                    <h3>{tool.title}</h3>
+                    <p>{tool.description}</p>
+                  </button>
+                );
+              }
+
+              return (
                 <Link
                   key={tool.title}
                   to={tool.path}
@@ -90,11 +116,12 @@ export default function Dashboard() {
                   <h3>{tool.title}</h3>
                   <p>{tool.description}</p>
                 </Link>
-              )
-            )}
+              );
+            })}
           </div>
         ) : (
           <div className="cc-grid">
+
             {company && (
               <Link
                 to={`/companies/${company.id}`}
@@ -146,11 +173,14 @@ export default function Dashboard() {
               <h3>Manage Candidate Applications</h3>
               <p>Review candidate applications.</p>
             </div>
+
           </div>
         )}
       </section>
 
-      {isSeeker && (
+      {/* Application Status Tracking:
+          Visible only when the user clicks its card */}
+      {isSeeker && showTracker && (
         <section
           id="application-tracker"
           className="cc-dashboard-tracker cc-card"
@@ -159,6 +189,7 @@ export default function Dashboard() {
           <ApplicationTracker />
         </section>
       )}
+
     </div>
   );
 }
