@@ -152,39 +152,131 @@ export default function CompanyForm() {
     );
   }
 
+  
   if (mode === 'choose') {
     return (
-      <div>
-        <h2>Set Up Your Company</h2>
-        <p>Every recruiter is associated with a company. Create a new one or join an existing one.</p>
-        <button onClick={() => setMode('create')}>Create New Company</button>
-        {' '}
-        <button onClick={() => setMode('join')}>Join Existing Company</button>
-      </div>
+      <main className="cc-company-page">
+        <section className="cc-company-panel">
+          <div className="cc-company-heading">
+            <h1>Set Up Your Company</h1>
+            <p>
+              Every recruiter is associated with a company.
+              Create a new company or join an existing one
+              to get started.
+            </p>
+          </div>
+
+          <div className="cc-company-choice-grid">
+            <button
+              type="button"
+              className="cc-company-choice"
+              onClick={() => setMode('create')}
+            >
+              <span className="cc-company-choice-icon">
+                +
+              </span>
+              <strong>Create New Company</strong>
+              <span>
+                Build a company profile and start posting jobs.
+              </span>
+              <span className="cc-company-choice-action">
+                Create company
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="cc-company-choice"
+              onClick={() => setMode('join')}
+            >
+              <span className="cc-company-choice-icon">
+                ↗
+              </span>
+              <strong>Join Existing Company</strong>
+              <span>
+                Find your organization and join its team.
+              </span>
+              <span className="cc-company-choice-action">
+                Browse companies
+              </span>
+            </button>
+          </div>
+        </section>
+      </main>
     );
   }
 
+
+  
   if (mode === 'join') {
     return (
-      <div>
-        <h2>Join a Company</h2>
-        <button onClick={() => setMode('choose')}>← Back</button>
-        {joinError && <p style={{ color: 'red' }}>{joinError}</p>}
-        {companies.length === 0 && !joinError && <p>No companies found.</p>}
-        <ul>
-          {companies.map(c => (
-            <li key={c.id}>
-              <strong>{c.name}</strong>
-              {c.industry && ` — ${c.industry}`}
-              {c.location && ` · ${c.location}`}
-              {' '}
-              <button onClick={() => handleJoin(c.id)} disabled={joining}>Join</button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <main className="cc-company-page">
+        <section className="cc-company-panel">
+          <button
+            type="button"
+            className="cc-company-back"
+            onClick={() => setMode('choose')}
+          >
+            ← Back to company setup
+          </button>
+
+          <div className="cc-company-heading">
+            <h1>Join a Company</h1>
+            <p>
+              Choose the company you belong to from
+              the list below.
+            </p>
+          </div>
+
+          {joinError && (
+            <div className="cc-company-alert" role="alert">
+              {joinError}
+            </div>
+          )}
+
+          {companies.length === 0 && !joinError && (
+            <p className="cc-company-empty">
+              No companies found.
+            </p>
+          )}
+
+          <div className="cc-company-list">
+            {companies.map(c => (
+              <article
+                key={c.id}
+                className="cc-company-list-card"
+              >
+                <div className="cc-company-list-info">
+                  <h2>{c.name}</h2>
+
+                  {c.industry && (
+                    <p>{c.industry}</p>
+                  )}
+
+                  {c.location && (
+                    <span className="cc-company-location">
+                      {c.location}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="cc-company-primary"
+                  onClick={() => handleJoin(c.id)}
+                  disabled={joining}
+                  aria-label={`Join ${c.name}`}
+                >
+                  {joining ? 'Joining...' : 'Join'}
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      </main>
     );
   }
+
 
   const imageStatus = (
     <>
@@ -202,8 +294,9 @@ export default function CompanyForm() {
   );
 
   return (
-    <div>
-      <h2>{isEditing ? 'Edit Company Profile' : 'Set Up Your Company Page'}</h2>
+      <div className="cc-company-page cc-company-form-page">
+    <h2>{isEditing ? 'Edit Company Profile' : 'Set Up Your Company Page'}</h2>
+     
       {!isEditing && (
         <p>
           <button onClick={() => setMode('choose')}>← Back</button>
@@ -254,7 +347,11 @@ export default function CompanyForm() {
 
       {serverError && <p style={{ color: 'red' }}>{serverError}</p>}
 
-      <form onSubmit={handleSubmit} noValidate>
+      <form
+  className="cc-company-details-form"
+  onSubmit={handleSubmit}
+  noValidate
+>
         <div>
           <label htmlFor="name">Company Name:</label><br />
           <input id="name" name="name" type="text" value={form.name} onChange={handleChange} />

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -27,11 +28,13 @@ export default function Register() {
     if (!password) {
       newErrors.password = 'Password is required.';
     } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters long.';
+      newErrors.password =
+        'Password must be at least 6 characters long.';
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password.';
+      newErrors.confirmPassword =
+        'Please confirm your password.';
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match.';
     }
@@ -51,15 +54,23 @@ export default function Register() {
     if (!validateForm()) return;
 
     setLoading(true);
+
     try {
       await register(email.trim(), password, role);
-      // New recruiters set up their company page before anything else
-      navigate(role === 'Recruiter' ? '/recruiter/company' : '/dashboard');
+
+      navigate(
+        role === 'Recruiter'
+          ? '/recruiter/company'
+          : '/dashboard'
+      );
     } catch (err) {
       if (err.errors) {
         setErrors(err.errors);
       }
-      setServerError(err.message || 'Registration failed.');
+
+      setServerError(
+        err.message || err.error || 'Registration failed.'
+      );
     } finally {
       setLoading(false);
     }
@@ -67,8 +78,15 @@ export default function Register() {
 
   const fillDemo = (demoRole) => {
     setRole(demoRole);
+
     const num = Math.floor(100 + Math.random() * 900);
-    setEmail(demoRole === 'Job Seeker' ? `seeker_${num}@test.com` : `recruiter_${num}@test.com`);
+
+    setEmail(
+      demoRole === 'Job Seeker'
+        ? `seeker_${num}@test.com`
+        : `recruiter_${num}@test.com`
+    );
+
     setPassword('Password123!');
     setConfirmPassword('Password123!');
     setErrors({});
@@ -76,92 +94,180 @@ export default function Register() {
   };
 
   return (
-    <div>
-      <h2>Create Account</h2>
-      <p>Sign up as a Job Seeker or Recruiter</p>
+    <main className="cc-register-page">
+      <section className="cc-register-card">
+        <div className="cc-register-header">
+          <div className="cc-register-logo" aria-hidden="true">
+            CC
+          </div>
 
-      {/* Role Selector Radio Buttons */}
-      <div>
-        <label>
-          <input
-            type="radio"
-            name="role"
-            value="Job Seeker"
-            checked={role === 'Job Seeker'}
-            onChange={(e) => setRole(e.target.value)}
-          />
-          Job Seeker
-        </label>
-        {' '}
-        <label>
-          <input
-            type="radio"
-            name="role"
-            value="Recruiter"
-            checked={role === 'Recruiter'}
-            onChange={(e) => setRole(e.target.value)}
-          />
-          Recruiter
-        </label>
-      </div>
-      <br />
-
-      {serverError && <p style={{ color: 'red' }}>{serverError}</p>}
-
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
-          <label htmlFor="email">Email Address:</label><br />
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {errors.email && <p style={{ color: 'red' }}>{errors.email}</p>}
+          <h1>Create Account</h1>
+          <p>
+            Join CareerConnect as a Job Seeker or Recruiter.
+          </p>
         </div>
-        <br />
 
-        <div>
-          <label htmlFor="password">Password:</label><br />
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {errors.password && <p style={{ color: 'red' }}>{errors.password}</p>}
+        {serverError && (
+          <div className="cc-register-alert" role="alert">
+            {serverError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate>
+          <fieldset className="cc-register-roles">
+            <legend>I am a</legend>
+
+            <div className="cc-register-role-options">
+              {['Job Seeker', 'Recruiter'].map(option => (
+                <label
+                  key={option}
+                  className={
+                    'cc-register-role-option' +
+                    (role === option ? ' is-selected' : '')
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={option}
+                    checked={role === option}
+                    onChange={(e) => setRole(e.target.value)}
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+
+            {errors.role && (
+              <p className="cc-register-error" role="alert">
+                {errors.role}
+              </p>
+            )}
+          </fieldset>
+
+          <div className="cc-register-field">
+            <label htmlFor="register-email">
+              Email Address
+            </label>
+            <input
+              id="register-email"
+              type="email"
+              autoComplete="email"
+              placeholder="Enter your email"
+              value={email}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={
+                errors.email ? 'register-email-error' : undefined
+              }
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            {errors.email && (
+              <p
+                id="register-email-error"
+                className="cc-register-error"
+                role="alert"
+              >
+                {errors.email}
+              </p>
+            )}
+          </div>
+
+          <div className="cc-register-field">
+            <label htmlFor="register-password">
+              Password
+            </label>
+            <input
+              id="register-password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="At least 6 characters"
+              value={password}
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={
+                errors.password
+                  ? 'register-password-error'
+                  : undefined
+              }
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {errors.password && (
+              <p
+                id="register-password-error"
+                className="cc-register-error"
+                role="alert"
+              >
+                {errors.password}
+              </p>
+            )}
+          </div>
+
+          <div className="cc-register-field">
+            <label htmlFor="register-confirm-password">
+              Confirm Password
+            </label>
+            <input
+              id="register-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Confirm your password"
+              value={confirmPassword}
+              aria-invalid={Boolean(errors.confirmPassword)}
+              aria-describedby={
+                errors.confirmPassword
+                  ? 'register-confirm-error'
+                  : undefined
+              }
+              onChange={(e) =>
+                setConfirmPassword(e.target.value)
+              }
+            />
+            {errors.confirmPassword && (
+              <p
+                id="register-confirm-error"
+                className="cc-register-error"
+                role="alert"
+              >
+                {errors.confirmPassword}
+              </p>
+            )}
+          </div>
+
+          <button
+            className="cc-register-submit"
+            type="submit"
+            disabled={loading}
+          >
+            {loading
+              ? 'Creating Account...'
+              : `Sign Up as ${role}`}
+          </button>
+        </form>
+
+        <div className="cc-register-demo">
+          <p>Quick Demo Fill</p>
+
+          <div className="cc-register-demo-actions">
+            <button
+              type="button"
+              onClick={() => fillDemo('Job Seeker')}
+            >
+              Job Seeker Demo
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fillDemo('Recruiter')}
+            >
+              Recruiter Demo
+            </button>
+          </div>
         </div>
-        <br />
 
-        <div>
-          <label htmlFor="confirmPassword">Confirm Password:</label><br />
-          <input
-            id="confirmPassword"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-          {errors.confirmPassword && <p style={{ color: 'red' }}>{errors.confirmPassword}</p>}
-        </div>
-        <br />
-
-        <button type="submit" disabled={loading}>
-          {loading ? 'Creating Account...' : `Sign Up as ${role}`}
-        </button>
-      </form>
-      <br />
-
-      <div>
-        <small>Quick Demo Fill:</small><br />
-        <button type="button" onClick={() => fillDemo('Job Seeker')}>Job Seeker Demo</button>
-        {' '}
-        <button type="button" onClick={() => fillDemo('Recruiter')}>Recruiter Demo</button>
-      </div>
-      <br />
-
-      <div>
-        Already have an account? <Link to="/login">Log In</Link>
-      </div>
-    </div>
+        <p className="cc-register-footer">
+          Already have an account?{' '}
+          <Link to="/login">Log In</Link>
+        </p>
+      </section>
+    </main>
   );
 }
