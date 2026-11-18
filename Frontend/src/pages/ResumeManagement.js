@@ -10,23 +10,47 @@ export default function ResumeManagement() {
   const { user } = useAuth();
 
   if (!user || user.role !== 'Job Seeker') {
-    return <p>Access denied.</p>;
+    return (
+      <main className="cc-page">
+        <p role="alert">Access denied.</p>
+      </main>
+    );
   }
 
   return (
-    <main style={{
-      maxWidth: '1100px',
-      margin: '40px auto',
-      padding: '24px'
-    }}>
-      <h1>Resume Management & Parsing</h1>
-      <p>
-        Upload, parse, and manage your resume information.
-      </p>
+    <main className="cc-page cc-resume-page">
+      <header className="cc-resume-header">
+        <h1 className="cc-page-title">
+          Resume Management & Parsing
+        </h1>
 
-      <ResumeUpload />
-      <ResumeFeedbackCard />
-      <SavedCritiques />
+        <p className="cc-muted">
+          Upload, parse, and manage your resume information.
+        </p>
+      </header>
+
+      <div className="cc-resume-layout">
+        <section
+          className="cc-card cc-section cc-resume-section"
+          aria-label="Resume Upload and Parsing"
+        >
+          <ResumeUpload />
+        </section>
+
+        <section
+          className="cc-card cc-section cc-resume-section"
+          aria-label="AI Resume Feedback"
+        >
+          <ResumeFeedbackCard />
+        </section>
+
+        <section
+          className="cc-card cc-section cc-resume-section"
+          aria-label="Saved Resume Critiques"
+        >
+          <SavedCritiques />
+        </section>
+      </div>
     </main>
   );
 }
