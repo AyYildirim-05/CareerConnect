@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { getProfile, updateProfile } from '../services/profileService';
 import ResumeProfileEditor from '../components/ResumeProfileEditor';
 import ProfileResumeManager from '../components/ProfileResumeManager';
+
 const emptyProfile = {
   firstName: '',
   lastName: '',
@@ -10,6 +11,13 @@ const emptyProfile = {
   headline: '',
   bio: ''
 };
+
+const profileFields = [
+  ['firstName', 'First Name'],
+  ['lastName', 'Last Name'],
+  ['phone', 'Phone Number'],
+  ['headline', 'Professional Headline']
+];
 
 export default function Profile() {
   const [profile, setProfile] = useState(emptyProfile);
@@ -22,9 +30,6 @@ export default function Profile() {
     async function loadProfile() {
       try {
         const result = await getProfile();
-
-        // Supports common response formats:
-        // { profile: {...} } or a direct profile object.
         const data = result.profile || result.data || result;
 
         setProfile({
@@ -46,6 +51,7 @@ export default function Profile() {
 
   function handleChange(event) {
     const { name, value } = event.target;
+
     setProfile(prev => ({
       ...prev,
       [name]: value
@@ -70,78 +76,118 @@ export default function Profile() {
   }
 
   if (loading) {
-    return <p>Loading your profile...</p>;
+    return (
+      <main className="cc-page">
+        <p role="status">Loading your profile...</p>
+      </main>
+    );
   }
 
   return (
-    <div style={{
-      maxWidth: '650px',
-      margin: '40px auto',
-      padding: '24px'
-    }}>
-      <h1>My Profile</h1>
-      <p>Manage your Job Seeker information.</p>
-
-      {error && (
-        <p role="alert" style={{ color: 'red' }}>
-          {error}
+    <main className="cc-page cc-profile-page">
+      <header className="cc-profile-header">
+        <h1 className="cc-page-title">My Profile</h1>
+        <p className="cc-muted">
+          Manage your Job Seeker information and resume.
         </p>
-      )}
+      </header>
 
-      {message && (
-        <p role="status" style={{ color: 'green' }}>
-          {message}
+      <section
+        className="cc-card cc-section"
+        aria-labelledby="personal-profile-heading"
+      >
+        <h2
+          id="personal-profile-heading"
+          className="cc-card-title"
+        >
+          Personal Profile
+        </h2>
+
+        <p className="cc-muted cc-profile-description">
+          Update your contact information and professional details.
         </p>
-      )}
 
-      <form onSubmit={handleSubmit}>
-        {[
-          ['firstName', 'First Name'],
-          ['lastName', 'Last Name'],
-          ['phone', 'Phone Number'],
-          ['headline', 'Professional Headline']
-        ].map(([name, label]) => (
-          <div key={name} style={{ marginBottom: '18px' }}>
-            <label htmlFor={name}>{label}</label>
-            <input
-              id={name}
-              name={name}
-              value={profile[name]}
+        {error && (
+          <p role="alert" className="cc-alert cc-alert-error">
+            {error}
+          </p>
+        )}
+
+        {message && (
+          <p role="status" className="cc-alert cc-alert-success">
+            {message}
+          </p>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="cc-profile-grid">
+            {profileFields.map(([name, label]) => (
+              <div className="cc-form-group" key={name}>
+                <label className="cc-label" htmlFor={name}>
+                  {label}
+                </label>
+
+                <input
+                  className="cc-input"
+                  id={name}
+                  name={name}
+                  type={name === 'phone' ? 'tel' : 'text'}
+                  autoComplete={
+                    name === 'firstName'
+                      ? 'given-name'
+                      : name === 'lastName'
+                      ? 'family-name'
+                      : name === 'phone'
+                      ? 'tel'
+                      : 'off'
+                  }
+                  value={profile[name]}
+                  onChange={handleChange}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="cc-form-group">
+            <label className="cc-label" htmlFor="bio">
+              About Me
+            </label>
+
+            <textarea
+              className="cc-textarea"
+              id="bio"
+              name="bio"
+              value={profile.bio}
               onChange={handleChange}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '10px',
-                marginTop: '6px',
-                boxSizing: 'border-box'
-              }}
+              rows={5}
             />
           </div>
-        ))}
 
-        <div style={{ marginBottom: '18px' }}>
-          <label htmlFor="bio">About Me</label>
-          <textarea
-            id="bio"
-            name="bio"
-            value={profile.bio}
-            onChange={handleChange}
-            rows={5}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '10px',
-              marginTop: '6px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+          <div className="cc-profile-actions">
+            <button
+              type="submit"
+              className="cc-button cc-button-primary"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </section>
 
-        <button type="submit" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </form>
-<ProfileResumeManager />
-<ResumeProfileEditor />    </div>
+      <section
+        className="cc-card cc-section"
+        aria-label="PDF Resume Management"
+      >
+        <ProfileResumeManager />
+      </section>
+
+      <section
+        className="cc-card cc-section"
+        aria-label="Resume Information Editor"
+      >
+        <ResumeProfileEditor />
+      </section>
+    </main>
   );
 }

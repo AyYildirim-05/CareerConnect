@@ -81,15 +81,42 @@ const inputStyle = {
   border: '1px solid #cbd5e1',
   borderRadius: 6,
   boxSizing: 'border-box',
-  font: 'inherit'
+  font: 'inherit',
+  minWidth: 0,
+  maxWidth: '100%',
+  backgroundColor: '#fff',
+  color: '#0f172a'
 };
 
 const cardStyle = {
-  padding: 20,
+  padding: 'clamp(14px, 3vw, 20px)',
+  minWidth: 0,
+  overflowWrap: 'anywhere',
   border: '1px solid #e2e8f0',
   borderRadius: 10,
   marginBottom: 16,
   background: '#fff'
+};
+
+const actionButtonStyle = {
+  padding: '10px 16px',
+  borderRadius: 8,
+  border: '1px solid #bfdbfe',
+  backgroundColor: '#eff6ff',
+  color: '#1d4ed8',
+  font: 'inherit',
+  fontWeight: 600,
+  cursor: 'pointer',
+  maxWidth: '100%',
+  whiteSpace: 'normal',
+  overflowWrap: 'anywhere'
+};
+
+const removeButtonStyle = {
+  ...actionButtonStyle,
+  borderColor: '#fecaca',
+  backgroundColor: '#fff7f7',
+  color: '#b91c1c'
 };
 
 function Field({ name, value, onChange }) {
@@ -117,7 +144,6 @@ function Field({ name, value, onChange }) {
     if (isArray) {
       onChange(text.split('\n').map(x => x.trim()).filter(Boolean));
     } else if (isObject) {
-      // Keep JSON object structure intact while editing.
       try {
         onChange(JSON.parse(text));
       } catch {
@@ -271,10 +297,10 @@ export default function ResumeProfileEditor() {
   if (!resume) {
     return (
       <div>
-        <p style={{ color: '#b91c1c' }}>{error}</p>
-        <p>
-          Please upload and parse your resume first.
+        <p role="alert" style={{ color: '#b91c1c' }}>
+          {error}
         </p>
+        <p>Please upload and parse your resume first.</p>
       </div>
     );
   }
@@ -304,10 +330,14 @@ export default function ResumeProfileEditor() {
 
   return (
     <section style={{
+      width: '100%',
       maxWidth: 950,
-      margin: '40px auto',
-      padding: 20,
-      color: '#1e293b'
+      minWidth: 0,
+      boxSizing: 'border-box',
+      margin: '24px auto',
+      padding: 'clamp(0px, 2vw, 20px)',
+      color: '#1e293b',
+      overflowWrap: 'anywhere'
     }}>
       <h2>Resume Information</h2>
       <p>
@@ -316,11 +346,15 @@ export default function ResumeProfileEditor() {
       </p>
 
       {error && (
-        <p style={{ color: '#b91c1c' }}>{error}</p>
+        <p role="alert" style={{ color: '#b91c1c' }}>
+          {error}
+        </p>
       )}
 
       {message && (
-        <p style={{ color: '#15803d' }}>{message}</p>
+        <p role="status" style={{ color: '#15803d' }}>
+          {message}
+        </p>
       )}
 
       <div style={cardStyle}>
@@ -395,7 +429,8 @@ export default function ResumeProfileEditor() {
                 <div
                   key={index}
                   style={{
-                    padding: 16,
+                    padding: 'clamp(10px, 3vw, 16px)',
+                    minWidth: 0,
                     border: '1px solid #e2e8f0',
                     borderRadius: 8,
                     marginBottom: 14
@@ -427,6 +462,7 @@ export default function ResumeProfileEditor() {
 
                   <button
                     type="button"
+                    style={removeButtonStyle}
                     onClick={() =>
                       removeItem(section, index)
                     }
@@ -440,7 +476,7 @@ export default function ResumeProfileEditor() {
             <button
               type="button"
               onClick={() => addItem(section)}
-              style={{ padding: '10px 16px' }}
+              style={actionButtonStyle}
             >
               + Add {sectionLabels[section]}
             </button>
@@ -491,12 +527,17 @@ export default function ResumeProfileEditor() {
         onClick={save}
         style={{
           padding: '12px 24px',
+          width: '100%',
+          maxWidth: 360,
+          minHeight: 44,
+          font: 'inherit',
           background: '#2563eb',
           color: '#fff',
           border: 0,
           borderRadius: 8,
           fontWeight: 600,
-          cursor: saving ? 'wait' : 'pointer'
+          cursor: saving ? 'wait' : 'pointer',
+          opacity: saving ? 0.7 : 1
         }}
       >
         {saving
