@@ -71,16 +71,27 @@ export default function Dashboard() {
 
         {isSeeker ? (
           <div className="cc-grid">
-            {seekerTools.map(tool => (
-              <Link
-                key={tool.title}
-                to={tool.path}
-                className="cc-tool-card"
-              >
-                <h3>{tool.title}</h3>
-                <p>{tool.description}</p>
-              </Link>
-            ))}
+            {seekerTools.map(tool =>
+              tool.path.startsWith('#') ? (
+                <a
+                  key={tool.title}
+                  href={tool.path}
+                  className="cc-tool-card"
+                >
+                  <h3>{tool.title}</h3>
+                  <p>{tool.description}</p>
+                </a>
+              ) : (
+                <Link
+                  key={tool.title}
+                  to={tool.path}
+                  className="cc-tool-card"
+                >
+                  <h3>{tool.title}</h3>
+                  <p>{tool.description}</p>
+                </Link>
+              )
+            )}
           </div>
         ) : (
           <div className="cc-grid">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +42,9 @@ export default function Login() {
       await login(email.trim(), password);
       navigate('/dashboard');
     } catch (err) {
-      setServerError(err.error || err.message || 'Invalid email or password.');
+      setServerError(
+        err.error || err.message || 'Invalid email or password.'
+      );
     } finally {
       setLoading(false);
     }
@@ -55,64 +58,128 @@ export default function Login() {
   };
 
   return (
-    <div>
-      <h2>Log In</h2>
-      <p>Sign in to access your account</p>
+    <main className="cc-login-page">
+      <section
+        className="cc-login-card"
+        aria-labelledby="login-title"
+      >
+        <div className="cc-login-header">
+          <div className="cc-login-icon" aria-hidden="true">
+            CC
+          </div>
 
-      {serverError && <p style={{ color: 'red' }}>{serverError}</p>}
-
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
-          <label htmlFor="email">Email Address:</label><br />
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {errors.email && <p style={{ color: 'red' }}>{errors.email}</p>}
+          <h1 id="login-title">Welcome back</h1>
+          <p>Sign in to access your CareerConnect account.</p>
         </div>
-        <br />
 
-        <div>
-          <label htmlFor="password">Password:</label><br />
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {errors.password && <p style={{ color: 'red' }}>{errors.password}</p>}
+        {serverError && (
+          <div className="cc-login-alert" role="alert">
+            {serverError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="cc-login-field">
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="Enter your email"
+              value={email}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={
+                errors.email ? 'login-email-error' : undefined
+              }
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors(prev => ({ ...prev, email: '' }));
+              }}
+            />
+            {errors.email && (
+              <p
+                id="login-email-error"
+                className="cc-login-error"
+                role="alert"
+              >
+                {errors.email}
+              </p>
+            )}
+          </div>
+
+          <div className="cc-login-field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              value={password}
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={
+                errors.password
+                  ? 'login-password-error'
+                  : undefined
+              }
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrors(prev => ({ ...prev, password: '' }));
+              }}
+            />
+            {errors.password && (
+              <p
+                id="login-password-error"
+                className="cc-login-error"
+                role="alert"
+              >
+                {errors.password}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="cc-login-submit"
+            disabled={loading}
+          >
+            {loading ? 'Authenticating...' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="cc-login-demo">
+          <p>Test Accounts</p>
+          <div className="cc-login-demo-actions">
+            <button
+              type="button"
+              onClick={() =>
+                fillDemoAccount(
+                  'seeker@example.com',
+                  'Password123!'
+                )
+              }
+            >
+              Seeker Demo
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                fillDemoAccount(
+                  'recruiter@company.com',
+                  'RecruiterPassword123!'
+                )
+              }
+            >
+              Recruiter Demo
+            </button>
+          </div>
         </div>
-        <br />
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Authenticating...' : 'Sign In'}
-        </button>
-      </form>
-      <br />
-
-      <div>
-        <small>Test Accounts:</small><br />
-        <button
-          type="button"
-          onClick={() => fillDemoAccount('seeker@example.com', 'Password123!')}
-        >
-          Seeker Demo
-        </button>
-        {' '}
-        <button
-          type="button"
-          onClick={() => fillDemoAccount('recruiter@company.com', 'RecruiterPassword123!')}
-        >
-          Recruiter Demo
-        </button>
-      </div>
-      <br />
-
-      <div>
-        Don't have an account? <Link to="/register">Sign Up</Link>
-      </div>
-    </div>
+        <p className="cc-login-register">
+          Don't have an account?{' '}
+          <Link to="/register">Sign Up</Link>
+        </p>
+      </section>
+    </main>
   );
 }
