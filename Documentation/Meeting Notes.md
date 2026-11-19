@@ -11,3 +11,4 @@
 | 5 november | 25 mins | Discussed the progress of everyones user stories. |
 | 12 november| 35 mins|  The current state of the project: the frontend, everyone's individual progress. Who is available to do some new user stories. |
 | 16 november | 25 mins | Dscussed the scope of the project. Decided to remove 2 tasks and distribute the remaining between us. |
+| 19 november | 30 mins | Talked about task seperation. Talked about improvements on the implemented funcitonalities for sprint 3. Further talked about the scope of the project. |
